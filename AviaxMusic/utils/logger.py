@@ -1,63 +1,33 @@
-from pyrogram.enums import ParseMode
+From pyrogram.enums import ParseMode
+
 from AviaxMusic import app
 from AviaxMusic.utils.database import is_on_off
+from config import LOG_GROUP_ID
 
-# Aapka Naya Log Channel ID
-NEW_LOG_CHANNEL = -1003150808065
-
-def small_caps(text: str) -> str:
-    small_caps_map = {
-        'a': 'ᴀ', 'b': 'ʙ', 'c': 'ᴄ', 'd': 'ᴅ', 'e': 'ᴇ', 'f': 'ғ', 'g': 'ɢ', 'h': 'ʜ',
-        'i': 'ɪ', 'j': 'ᴊ', 'k': 'ᴋ', 'l': 'ʟ', 'm': 'ᴍ', 'n': 'ɴ', 'o': 'ᴏ', 'p': 'ᴘ',
-        'q': 'ǫ', 'r': 'ʀ', 's': 's', 't': 'ᴛ', 'u': 'ᴜ', 'v': 'ᴠ', 'w': 'ᴡ', 'x': 'x',
-        'y': 'ʏ', 'z': 'ᴢ', 'A': 'ᴀ', 'B': 'ʙ', 'C': 'ᴄ', 'D': 'ᴅ', 'E': 'ᴇ', 'F': 'ғ',
-        'G': 'ɢ', 'H': 'ʜ', 'I': 'ɪ', 'J': 'ᴊ', 'K': 'ᴋ', 'L': 'ʟ', 'M': 'ᴍ', 'N': 'ɴ',
-        'O': 'ᴏ', 'P': 'ᴘ', 'Q': 'ǫ', 'R': 'ʀ', 'S': 's', 'T': 'ᴛ', 'U': 'ᴜ', 'V': 'ᴠ',
-        'W': 'ᴡ', 'X': 'x', 'Y': 'ʏ', 'Z': 'ᴢ'
-    }
-    return ''.join(small_caps_map.get(char, char) for char in text)
 
 async def play_logs(message, streamtype):
-    if await is_on_off(2): # Check agar logger database se ON hai
-        try:
-            chat = message.chat
-            user = message.from_user
-            
-            # Invite link aur member count nikalna
+    if await is_on_off(2):
+        logger_text = f"""
+<b>{app.mention} ᴘʟᴀʏ ʟᴏɢ</b>
+
+<b>ᴄʜᴀᴛ ɪᴅ :</b> <code>{message.chat.id}</code>
+<b>ᴄʜᴀᴛ ɴᴀᴍᴇ :</b> {message.chat.title}
+<b>ᴄʜᴀᴛ ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.chat.username}
+
+<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>
+<b>ɴᴀᴍᴇ :</b> {message.from_user.mention}
+<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}
+
+<b>ǫᴜᴇʀʏ :</b> {message.text.split(None, 1)[1]}
+<b>sᴛʀᴇᴀᴍᴛʏᴘᴇ :</b> {streamtype}"""
+        if message.chat.id != LOG_GROUP_ID:
             try:
-                invite = await app.export_chat_invite_link(chat.id)
+                await app.send_message(
+                    chat_id=LOG_GROUP_ID,
+                    text=logger_text,
+                    parse_mode=ParseMode.HTML,
+                    disable_web_page_preview=True,
+                )
             except:
-                invite = "ɴᴏ ɪɴᴠɪᴛᴇ ʟɪɴᴋ"
-                
-            m_count = await app.get_chat_members_count(chat.id)
-            query = message.text.split(None, 1)[1] if len(message.text.split()) > 1 else "ɴ/ᴀ"
-
-            logger_text = small_caps(f"""
-✨ NEW STREAM STARTED ✨
-
-👥 GROUP INFO:
-├ Name: {chat.title}
-├ ID: {chat.id}
-├ Link: {invite}
-└ Members: {m_count}
-
-👤 USER INFO:
-├ Name: {user.mention}
-├ ID: {user.id}
-└ Username: @{user.username if user.username else 'None'}
-
-🎶 STREAM INFO:
-├ Query: {query}
-└ Type: {streamtype}
-""")
-            
-            # Message send karna naye ID par
-            await app.send_message(
-                chat_id=NEW_LOG_CHANNEL,
-                text=logger_text,
-                disable_web_page_preview=True,
-            )
-        except Exception as e:
-            print(f"ʟᴏɢɢᴇʀ ᴇʀʀᴏʀ: {e}")
-            pass
-    return
+                pass
+        return
