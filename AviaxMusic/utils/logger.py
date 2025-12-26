@@ -101,5 +101,4 @@ await log_stream_info(
     username=message.from_user.username,
     song_name="Song Title",
     song_link="https://youtube.com/...",
-    platform="ʏᴏᴜᴛᴜʙᴇ"
-)
+    platform="ʏᴏᴜᴛᴜʙᴇ" )
