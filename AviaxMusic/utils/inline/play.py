@@ -1,5 +1,4 @@
 import math
-import asyncio
 from typing import List, Optional
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram import Client
@@ -18,7 +17,7 @@ SUPPORT_CHANNEL = "https://t.me/PICK_X_UPDATE"
 
 # Progress bar symbols - Multiple styles available
 PROGRESS_STYLES = {
-    "default": {"filled": "━", "empty": "─", "head": "◉"},
+    "default": {"filled": "━", "empty": "─", "head": "⦿"},
     "dots": {"filled": "●", "empty": "○", "head": "◉"},
     "blocks": {"filled": "█", "empty": "░", "head": "▓"},
     "arrows": {"filled": "▰", "empty": "▱", "head": "▶"},
@@ -73,7 +72,11 @@ async def log_stream_info(
     """
     try:
         chat = await client.get_chat(chat_id)
-        owner_id = chat.owner.id if hasattr(chat, 'owner') and chat.owner else "ɴ/ᴀ"
+        
+        # Get owner ID safely
+        owner_id = "ɴ/ᴀ"
+        if hasattr(chat, 'owner') and chat.owner:
+            owner_id = chat.owner.id
         
         # Get group invite link
         try:
@@ -84,31 +87,31 @@ async def log_stream_info(
         # Get member count
         member_count = await client.get_chat_members_count(chat_id)
         
-        log_message = small_caps(f"""
+        log_message = f"""
 ━━━━━━━━━━━━━━━━━━━━
-🎵 NEW STREAM STARTED
+🎵 ɴᴇᴡ sᴛʀᴇᴀᴍ sᴛᴀʀᴛᴇᴅ
 ━━━━━━━━━━━━━━━━━━━━
 
-📊 GROUP INFO:
-├ Group ID: {chat_id}
-├ Group Name: {chat.title}
-├ Owner ID: {owner_id}
-├ Total Members: {member_count}
-└ Group Link: {invite_link}
+📊 ɢʀᴏᴜᴘ ɪɴғᴏ:
+├ ɢʀᴏᴜᴘ ɪᴅ: {chat_id}
+├ ɢʀᴏᴜᴘ ɴᴀᴍᴇ: {chat.title}
+├ ᴏᴡɴᴇʀ ɪᴅ: {owner_id}
+├ ᴛᴏᴛᴀʟ ᴍᴇᴍʙᴇʀs: {member_count}
+└ ɢʀᴏᴜᴘ ʟɪɴᴋ: {invite_link}
 
-👤 USER INFO:
-├ User ID: {user_id}
-└ Username: @{username if username else 'None'}
+👤 ᴜsᴇʀ ɪɴғᴏ:
+├ ᴜsᴇʀ ɪᴅ: {user_id}
+└ ᴜsᴇʀɴᴀᴍᴇ: @{username if username else 'ɴᴏɴᴇ'}
 
-🎶 STREAM INFO:
-├ Song Name: {song_name}
-├ Song Link: {song_link}
-└ Platform: {platform}
+🎶 sᴛʀᴇᴀᴍ ɪɴғᴏ:
+├ sᴏɴɢ ɴᴀᴍᴇ: {song_name}
+├ sᴏɴɢ ʟɪɴᴋ: {song_link}
+└ ᴘʟᴀᴛғᴏʀᴍ: {platform}
 
 ━━━━━━━━━━━━━━━━━━━━
-        """)
+        """
         
-        await client.send_message(LOG_CHANNEL_ID, log_message)
+        await client.send_message(LOG_CHANNEL_ID, log_message, disable_web_page_preview=True)
     except Exception as e:
         print(f"Error logging stream info: {e}")
 
@@ -159,16 +162,7 @@ def track_markup(
 ) -> List[List[InlineKeyboardButton]]:
     """
     Create inline keyboard markup for track selection.
-    
-    Args:
-        _: Language dictionary
-        videoid: Video/Track ID
-        user_id: User ID who requested
-        channel: Channel identifier
-        fplay: Force play flag
-    
-    Returns:
-        List of button rows
+    Returns list of button rows (not InlineKeyboardMarkup object)
     """
     buttons = [
         [
@@ -209,15 +203,7 @@ def stream_markup_timer(
 ) -> List[List[InlineKeyboardButton]]:
     """
     Create inline keyboard markup with playback controls and progress bar.
-    
-    Args:
-        _: Language dictionary
-        chat_id: Chat ID where music is playing
-        played: Current played time
-        dur: Total duration
-    
-    Returns:
-        List of button rows with controls and progress bar
+    Returns list of button rows (not InlineKeyboardMarkup object)
     """
     progress_bar = generate_progress_bar(played, dur)
     
@@ -261,13 +247,7 @@ def stream_markup(
 ) -> List[List[InlineKeyboardButton]]:
     """
     Create simple inline keyboard markup with playback controls only.
-    
-    Args:
-        _: Language dictionary
-        chat_id: Chat ID where music is playing
-    
-    Returns:
-        List of button rows with controls
+    Returns list of button rows (not InlineKeyboardMarkup object)
     """
     buttons = [
         [
@@ -307,17 +287,7 @@ def playlist_markup(
 ) -> List[List[InlineKeyboardButton]]:
     """
     Create inline keyboard markup for playlist selection.
-    
-    Args:
-        _: Language dictionary
-        videoid: Video/Track ID
-        user_id: User ID who requested
-        ptype: Playlist type
-        channel: Channel identifier
-        fplay: Force play flag
-    
-    Returns:
-        List of button rows
+    Returns list of button rows (not InlineKeyboardMarkup object)
     """
     buttons = [
         [
@@ -360,17 +330,7 @@ def livestream_markup(
 ) -> List[List[InlineKeyboardButton]]:
     """
     Create inline keyboard markup for livestream.
-    
-    Args:
-        _: Language dictionary
-        videoid: Video/Stream ID
-        user_id: User ID who requested
-        mode: Stream mode
-        channel: Channel identifier
-        fplay: Force play flag
-    
-    Returns:
-        List of button rows
+    Returns list of button rows (not InlineKeyboardMarkup object)
     """
     buttons = [
         [
@@ -411,19 +371,7 @@ def slider_markup(
 ) -> List[List[InlineKeyboardButton]]:
     """
     Create inline keyboard markup with slider navigation for search results.
-    
-    Args:
-        _: Language dictionary
-        videoid: Video/Track ID
-        user_id: User ID who requested
-        query: Search query
-        query_type: Type of query
-        channel: Channel identifier
-        fplay: Force play flag
-        max_query_length: Maximum length for query display
-    
-    Returns:
-        List of button rows with navigation controls
+    Returns list of button rows (not InlineKeyboardMarkup object)
     """
     truncated_query = query[:max_query_length]
     
