@@ -85,20 +85,26 @@ async def play_logs(message, streamtype, song_name=None, song_link=None, platfor
             except Exception as e:
                 print(f"Logger Error: {e}")
         return
-Option 2: Dono Functions Ko Use Karo
-Agar tum chahte ho ki inline.py wala function bhi kaam kare, to play.py mein dono call karo:
-from AviaxMusic.utils.inline import log_stream_info
-from AviaxMusic.logging import play_logs
 
-# Inside your play handler
-await play_logs(message, streamtype="ᴠɪᴅᴇᴏ")  # Existing logger
-
-# AND also call your new logger
-await log_stream_info(
-    client=app,
-    chat_id=message.chat.id,
-    user_id=message.from_user.id,
-    username=message.from_user.username,
-    song_name="Song Title",
-    song_link="https://youtube.com/...",
-    platform="ʏᴏᴜᴛᴜʙᴇ" )
+# Example usage in your play.py file:
+# 
+# Option 1: Use only this play_logs function
+# await play_logs(message, streamtype="ᴠɪᴅᴇᴏ", song_name=song_title, song_link=song_url)
+# 
+# Option 2: Use both functions (if you have log_stream_info in AviaxMusic.utils.inline)
+# from AviaxMusic.utils.inline import log_stream_info
+# from AviaxMusic.logging import play_logs
+# 
+# # Inside your play handler
+# await play_logs(message, streamtype="ᴠɪᴅᴇᴏ")  # Existing logger
+# 
+# # AND also call your new logger
+# await log_stream_info(
+#     client=app,
+#     chat_id=message.chat.id,
+#     user_id=message.from_user.id,
+#     username=message.from_user.username,
+#     song_name="Song Title",
+#     song_link="https://youtube.com/...",
+#     platform="ʏᴏᴜᴛᴜʙᴇ"
+# )
