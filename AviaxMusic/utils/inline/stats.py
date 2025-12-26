@@ -1,35 +1,42 @@
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-
 def stats_buttons(_, status):
+    # Agar user Sudo nahi hai
     not_sudo = [
-        InlineKeyboardButton(
-            text=_["SA_B_1"],
-            callback_data="TopOverall",
-        )
-    ]
-    sudo = [
-        InlineKeyboardButton(
-            text=_["SA_B_2"],
-            callback_data="bot_stats_sudo",
-        ),
-        InlineKeyboardButton(
-            text=_["SA_B_3"],
-            callback_data="TopOverall",
-        ),
-    ]
-    upl = InlineKeyboardMarkup(
         [
-            sudo if status else not_sudo,
-            [
-                InlineKeyboardButton(
-                    text=_["CLOSE_BUTTON"],
-                    callback_data="close",
-                ),
-            ],
+            InlineKeyboardButton(
+                text="📊 ᴏᴠᴇʀᴀʟʟ sᴛᴀᴛs",
+                callback_data="TopOverall",
+            )
         ]
-    )
-    return upl
+    ]
+    
+    # Agar user Sudo hai (Dono buttons ek hi line mein better lagte hain)
+    sudo = [
+        [
+            InlineKeyboardButton(
+                text="⚙️ ʙᴏᴛ sᴛᴀᴛs",
+                callback_data="bot_stats_sudo",
+            ),
+            InlineKeyboardButton(
+                text="📈 ᴏᴠᴇʀᴀʟʟ",
+                callback_data="TopOverall",
+            ),
+        ]
+    ]
+    
+    # Sudo status ke hisab se layout select karna
+    base_layout = sudo if status else not_sudo
+    
+    # Close button hamesha last mein alag row mein
+    base_layout.append([
+        InlineKeyboardButton(
+            text="🗑️ ᴄʟᴏsᴇ",
+            callback_data="close",
+        )
+    ])
+    
+    return InlineKeyboardMarkup(base_layout)
 
 
 def back_stats_buttons(_):
@@ -37,14 +44,14 @@ def back_stats_buttons(_):
         [
             [
                 InlineKeyboardButton(
-                    text=_["BACK_BUTTON"],
+                    text="⬅️ ʙᴀᴄᴋ",
                     callback_data="stats_back",
                 ),
                 InlineKeyboardButton(
-                    text=_["CLOSE_BUTTON"],
+                    text="🗑️ ᴄʟᴏsᴇ",
                     callback_data="close",
                 ),
-            ],
+            ]
         ]
     )
     return upl
