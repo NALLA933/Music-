@@ -9,18 +9,26 @@ from AviaxMusic.utils.formatters import time_to_seconds
 MAX_QUERY_LENGTH = 20
 PROGRESS_BAR_LENGTH = 10
 
-# Progress bar symbols
-PROGRESS_FILLED = "●"
-PROGRESS_EMPTY = "○"
+# Progress bar symbols - Multiple styles available
+PROGRESS_STYLES = {
+    "default": {"filled": "━", "empty": "─", "head": "◉"},
+    "dots": {"filled": "●", "empty": "○", "head": "◉"},
+    "blocks": {"filled": "█", "empty": "░", "head": "▓"},
+    "arrows": {"filled": "▰", "empty": "▱", "head": "▶"},
+}
+
+# Current style selection
+CURRENT_STYLE = "default"
 
 
-def generate_progress_bar(played: str, duration: str) -> str:
+def generate_progress_bar(played: str, duration: str, style: str = CURRENT_STYLE) -> str:
     """
     Generate a visual progress bar based on played time and duration.
     
     Args:
         played: Current played time (HH:MM:SS format)
         duration: Total duration (HH:MM:SS format)
+        style: Progress bar style (default, dots, blocks, arrows)
     
     Returns:
         str: Visual progress bar string
@@ -29,13 +37,24 @@ def generate_progress_bar(played: str, duration: str) -> str:
     duration_sec = time_to_seconds(duration)
     
     if duration_sec == 0:
-        return PROGRESS_EMPTY * PROGRESS_BAR_LENGTH
+        symbols = PROGRESS_STYLES.get(style, PROGRESS_STYLES["default"])
+        return symbols["empty"] * PROGRESS_BAR_LENGTH
     
     percentage = (played_sec / duration_sec) * 100
-    filled_length = round(percentage / 10)
-    filled_length = min(filled_length, PROGRESS_BAR_LENGTH)
+    position = round(percentage / 10)
+    position = min(max(position, 0), PROGRESS_BAR_LENGTH)
     
-    bar = PROGRESS_FILLED * filled_length + PROGRESS_EMPTY * (PROGRESS_BAR_LENGTH - filled_length)
+    symbols = PROGRESS_STYLES.get(style, PROGRESS_STYLES["default"])
+    
+    if position == 0:
+        bar = symbols["head"] + symbols["empty"] * (PROGRESS_BAR_LENGTH - 1)
+    elif position >= PROGRESS_BAR_LENGTH:
+        bar = symbols["filled"] * (PROGRESS_BAR_LENGTH - 1) + symbols["head"]
+    else:
+        bar = (symbols["filled"] * (position - 1) + 
+               symbols["head"] + 
+               symbols["empty"] * (PROGRESS_BAR_LENGTH - position))
+    
     return bar
 
 
@@ -102,11 +121,11 @@ def stream_markup_timer(
     
     buttons = [
         [
-            InlineKeyboardButton(text="▶️", callback_data=f"ADMIN Resume|{chat_id}"),
-            InlineKeyboardButton(text="⏸", callback_data=f"ADMIN Pause|{chat_id}"),
-            InlineKeyboardButton(text="🔄", callback_data=f"ADMIN Replay|{chat_id}"),
-            InlineKeyboardButton(text="⏭", callback_data=f"ADMIN Skip|{chat_id}"),
-            InlineKeyboardButton(text="⏹", callback_data=f"ADMIN Stop|{chat_id}"),
+            InlineKeyboardButton(text="▷", callback_data=f"ADMIN Resume|{chat_id}"),
+            InlineKeyboardButton(text="II", callback_data=f"ADMIN Pause|{chat_id}"),
+            InlineKeyboardButton(text="↻", callback_data=f"ADMIN Replay|{chat_id}"),
+            InlineKeyboardButton(text="‣‣I", callback_data=f"ADMIN Skip|{chat_id}"),
+            InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
         [
             InlineKeyboardButton(
@@ -140,11 +159,11 @@ def stream_markup(
     """
     buttons = [
         [
-            InlineKeyboardButton(text="▶️", callback_data=f"ADMIN Resume|{chat_id}"),
-            InlineKeyboardButton(text="⏸", callback_data=f"ADMIN Pause|{chat_id}"),
-            InlineKeyboardButton(text="🔄", callback_data=f"ADMIN Replay|{chat_id}"),
-            InlineKeyboardButton(text="⏭", callback_data=f"ADMIN Skip|{chat_id}"),
-            InlineKeyboardButton(text="⏹", callback_data=f"ADMIN Stop|{chat_id}"),
+            InlineKeyboardButton(text="▷", callback_data=f"ADMIN Resume|{chat_id}"),
+            InlineKeyboardButton(text="II", callback_data=f"ADMIN Pause|{chat_id}"),
+            InlineKeyboardButton(text="↻", callback_data=f"ADMIN Replay|{chat_id}"),
+            InlineKeyboardButton(text="‣‣I", callback_data=f"ADMIN Skip|{chat_id}"),
+            InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
         [
             InlineKeyboardButton(
@@ -279,7 +298,7 @@ def slider_markup(
         ],
         [
             InlineKeyboardButton(
-                text="◀️",
+                text="◁",
                 callback_data=f"slider B|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
             ),
             InlineKeyboardButton(
@@ -287,7 +306,7 @@ def slider_markup(
                 callback_data=f"forceclose {truncated_query}|{user_id}",
             ),
             InlineKeyboardButton(
-                text="▶️",
+                text="▷",
                 callback_data=f"slider F|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
             ),
         ],
