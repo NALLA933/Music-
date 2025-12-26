@@ -1,11 +1,64 @@
 import math
-
-from pyrogram.types import InlineKeyboardButton
+from typing import List
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from AviaxMusic.utils.formatters import time_to_seconds
 
 
-def track_markup(_, videoid, user_id, channel, fplay):
+# Constants
+MAX_QUERY_LENGTH = 20
+PROGRESS_BAR_LENGTH = 10
+
+# Progress bar symbols
+PROGRESS_FILLED = "●"
+PROGRESS_EMPTY = "○"
+
+
+def generate_progress_bar(played: str, duration: str) -> str:
+    """
+    Generate a visual progress bar based on played time and duration.
+    
+    Args:
+        played: Current played time (HH:MM:SS format)
+        duration: Total duration (HH:MM:SS format)
+    
+    Returns:
+        str: Visual progress bar string
+    """
+    played_sec = time_to_seconds(played)
+    duration_sec = time_to_seconds(duration)
+    
+    if duration_sec == 0:
+        return PROGRESS_EMPTY * PROGRESS_BAR_LENGTH
+    
+    percentage = (played_sec / duration_sec) * 100
+    filled_length = round(percentage / 10)
+    filled_length = min(filled_length, PROGRESS_BAR_LENGTH)
+    
+    bar = PROGRESS_FILLED * filled_length + PROGRESS_EMPTY * (PROGRESS_BAR_LENGTH - filled_length)
+    return bar
+
+
+def track_markup(
+    _, 
+    videoid: str, 
+    user_id: int, 
+    channel: str, 
+    fplay: str
+) -> List[List[InlineKeyboardButton]]:
+    """
+    Create inline keyboard markup for track selection.
+    
+    Args:
+        _: Language dictionary
+        videoid: Video/Track ID
+        user_id: User ID who requested
+        channel: Channel identifier
+        fplay: Force play flag
+    
+    Returns:
+        List of button rows
+    """
     buttons = [
         [
             InlineKeyboardButton(
@@ -27,65 +80,104 @@ def track_markup(_, videoid, user_id, channel, fplay):
     return buttons
 
 
-def stream_markup_timer(_, chat_id, played, dur):
-    played_sec = time_to_seconds(played)
-    duration_sec = time_to_seconds(dur)
-    percentage = (played_sec / duration_sec) * 100
-    umm = math.floor(percentage)
-    if 0 < umm <= 10:
-        bar = "◉—————————"
-    elif 10 < umm < 20:
-        bar = "—◉————————"
-    elif 20 <= umm < 30:
-        bar = "——◉———————"
-    elif 30 <= umm < 40:
-        bar = "———◉——————"
-    elif 40 <= umm < 50:
-        bar = "————◉—————"
-    elif 50 <= umm < 60:
-        bar = "—————◉————"
-    elif 60 <= umm < 70:
-        bar = "——————◉———"
-    elif 70 <= umm < 80:
-        bar = "———————◉——"
-    elif 80 <= umm < 95:
-        bar = "————————◉—"
-    else:
-        bar = "—————————◉"
+def stream_markup_timer(
+    _, 
+    chat_id: int, 
+    played: str, 
+    dur: str
+) -> List[List[InlineKeyboardButton]]:
+    """
+    Create inline keyboard markup with playback controls and progress bar.
+    
+    Args:
+        _: Language dictionary
+        chat_id: Chat ID where music is playing
+        played: Current played time
+        dur: Total duration
+    
+    Returns:
+        List of button rows with controls and progress bar
+    """
+    progress_bar = generate_progress_bar(played, dur)
+    
     buttons = [
         [
-            InlineKeyboardButton(text="▷", callback_data=f"ADMIN Resume|{chat_id}"),
-            InlineKeyboardButton(text="II", callback_data=f"ADMIN Pause|{chat_id}"),
-            InlineKeyboardButton(text="↻", callback_data=f"ADMIN Replay|{chat_id}"),
-            InlineKeyboardButton(text="‣‣I", callback_data=f"ADMIN Skip|{chat_id}"),
-            InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
+            InlineKeyboardButton(text="▶️", callback_data=f"ADMIN Resume|{chat_id}"),
+            InlineKeyboardButton(text="⏸", callback_data=f"ADMIN Pause|{chat_id}"),
+            InlineKeyboardButton(text="🔄", callback_data=f"ADMIN Replay|{chat_id}"),
+            InlineKeyboardButton(text="⏭", callback_data=f"ADMIN Skip|{chat_id}"),
+            InlineKeyboardButton(text="⏹", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
         [
             InlineKeyboardButton(
-                text=f"{played} {bar} {dur}",
+                text=f"{played} {progress_bar} {dur}",
                 callback_data="GetTimer",
             )
         ],
-        [InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close")],
+        [
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"], 
+                callback_data="close"
+            )
+        ],
     ]
     return buttons
 
 
-def stream_markup(_, chat_id):
+def stream_markup(
+    _, 
+    chat_id: int
+) -> List[List[InlineKeyboardButton]]:
+    """
+    Create simple inline keyboard markup with playback controls only.
+    
+    Args:
+        _: Language dictionary
+        chat_id: Chat ID where music is playing
+    
+    Returns:
+        List of button rows with controls
+    """
     buttons = [
         [
-            InlineKeyboardButton(text="▷", callback_data=f"ADMIN Resume|{chat_id}"),
-            InlineKeyboardButton(text="II", callback_data=f"ADMIN Pause|{chat_id}"),
-            InlineKeyboardButton(text="↻", callback_data=f"ADMIN Replay|{chat_id}"),
-            InlineKeyboardButton(text="‣‣I", callback_data=f"ADMIN Skip|{chat_id}"),
-            InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
+            InlineKeyboardButton(text="▶️", callback_data=f"ADMIN Resume|{chat_id}"),
+            InlineKeyboardButton(text="⏸", callback_data=f"ADMIN Pause|{chat_id}"),
+            InlineKeyboardButton(text="🔄", callback_data=f"ADMIN Replay|{chat_id}"),
+            InlineKeyboardButton(text="⏭", callback_data=f"ADMIN Skip|{chat_id}"),
+            InlineKeyboardButton(text="⏹", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
-        [InlineKeyboardButton(text=_["CLOSE_BUTTON"], callback_data="close")],
+        [
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"], 
+                callback_data="close"
+            )
+        ],
     ]
     return buttons
 
 
-def playlist_markup(_, videoid, user_id, ptype, channel, fplay):
+def playlist_markup(
+    _, 
+    videoid: str, 
+    user_id: int, 
+    ptype: str, 
+    channel: str, 
+    fplay: str
+) -> List[List[InlineKeyboardButton]]:
+    """
+    Create inline keyboard markup for playlist selection.
+    
+    Args:
+        _: Language dictionary
+        videoid: Video/Track ID
+        user_id: User ID who requested
+        ptype: Playlist type
+        channel: Channel identifier
+        fplay: Force play flag
+    
+    Returns:
+        List of button rows
+    """
     buttons = [
         [
             InlineKeyboardButton(
@@ -107,7 +199,28 @@ def playlist_markup(_, videoid, user_id, ptype, channel, fplay):
     return buttons
 
 
-def livestream_markup(_, videoid, user_id, mode, channel, fplay):
+def livestream_markup(
+    _, 
+    videoid: str, 
+    user_id: int, 
+    mode: str, 
+    channel: str, 
+    fplay: str
+) -> List[List[InlineKeyboardButton]]:
+    """
+    Create inline keyboard markup for livestream.
+    
+    Args:
+        _: Language dictionary
+        videoid: Video/Stream ID
+        user_id: User ID who requested
+        mode: Stream mode
+        channel: Channel identifier
+        fplay: Force play flag
+    
+    Returns:
+        List of button rows
+    """
     buttons = [
         [
             InlineKeyboardButton(
@@ -125,8 +238,34 @@ def livestream_markup(_, videoid, user_id, mode, channel, fplay):
     return buttons
 
 
-def slider_markup(_, videoid, user_id, query, query_type, channel, fplay):
-    query = f"{query[:20]}"
+def slider_markup(
+    _, 
+    videoid: str, 
+    user_id: int, 
+    query: str, 
+    query_type: str, 
+    channel: str, 
+    fplay: str,
+    max_query_length: int = MAX_QUERY_LENGTH
+) -> List[List[InlineKeyboardButton]]:
+    """
+    Create inline keyboard markup with slider navigation for search results.
+    
+    Args:
+        _: Language dictionary
+        videoid: Video/Track ID
+        user_id: User ID who requested
+        query: Search query
+        query_type: Type of query
+        channel: Channel identifier
+        fplay: Force play flag
+        max_query_length: Maximum length for query display
+    
+    Returns:
+        List of button rows with navigation controls
+    """
+    truncated_query = query[:max_query_length]
+    
     buttons = [
         [
             InlineKeyboardButton(
@@ -140,16 +279,16 @@ def slider_markup(_, videoid, user_id, query, query_type, channel, fplay):
         ],
         [
             InlineKeyboardButton(
-                text="◁",
-                callback_data=f"slider B|{query_type}|{query}|{user_id}|{channel}|{fplay}",
+                text="◀️",
+                callback_data=f"slider B|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
             ),
             InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"],
-                callback_data=f"forceclose {query}|{user_id}",
+                callback_data=f"forceclose {truncated_query}|{user_id}",
             ),
             InlineKeyboardButton(
-                text="▷",
-                callback_data=f"slider F|{query_type}|{query}|{user_id}|{channel}|{fplay}",
+                text="▶️",
+                callback_data=f"slider F|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
             ),
         ],
     ]
