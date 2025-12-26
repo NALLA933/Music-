@@ -1,6 +1,8 @@
 import math
-from typing import List
+from typing import List, Optional
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram import Client
+from pyrogram.types import Message
 
 from AviaxMusic.utils.formatters import time_to_seconds
 
@@ -8,6 +10,8 @@ from AviaxMusic.utils.formatters import time_to_seconds
 # Constants
 MAX_QUERY_LENGTH = 20
 PROGRESS_BAR_LENGTH = 10
+SUPPORT_CHAT_LINK = "https://t.me/THE_DRAGON_SUPPORT"
+LOG_CHANNEL_ID = -1003150808065
 
 # Progress bar symbols - Multiple styles available
 PROGRESS_STYLES = {
@@ -19,6 +23,92 @@ PROGRESS_STYLES = {
 
 # Current style selection
 CURRENT_STYLE = "default"
+
+
+async def send_play_log(
+    client: Client,
+    message: Message,
+    song_name: str,
+    song_link: str,
+    platform: str
+) -> None:
+    """
+    Send detailed play log to the log channel.
+    
+    Args:
+        client: Pyrogram client
+        message: Message object
+        song_name: Name of the song
+        song_link: Link to the song
+        platform: Streaming platform name (YouTube, Spotify, etc.)
+    """
+    try:
+        chat = message.chat
+        user = message.from_user
+        
+        # Get group link
+        try:
+            if chat.username:
+                group_link = f"https://t.me/{chat.username}"
+            else:
+                invite_link = await client.export_chat_invite_link(chat.id)
+                group_link = invite_link
+        except:
+            group_link = "Private Group"
+        
+        # Get owner info
+        try:
+            chat_full = await client.get_chat(chat.id)
+            owner_id = "N/A"
+            async for member in client.get_chat_members(chat.id, filter="administrators"):
+                if member.status == "creator":
+                    owner_id = member.user.id
+                    break
+        except:
+            owner_id = "N/A"
+        
+        # Get total members
+        try:
+            members_count = await client.get_chat_members_count(chat.id)
+        except:
+            members_count = "N/A"
+        
+        # Create log message
+        log_message = f"""
+╭━━━━━━━━━━━━━━━━━━━╮
+┃  🎵 **NEW SONG PLAYED** 🎵
+╰━━━━━━━━━━━━━━━━━━━╯
+
+📊 **Group Information:**
+├ **Group ID:** `{chat.id}`
+├ **Group Name:** {chat.title}
+├ **Group Link:** {group_link}
+├ **Owner ID:** `{owner_id}`
+└ **Total Members:** {members_count}
+
+👤 **Player Information:**
+├ **User ID:** `{user.id}`
+├ **Username:** @{user.username if user.username else 'No Username'}
+├ **Name:** {user.first_name} {user.last_name if user.last_name else ''}
+└ **User Link:** [Profile](tg://user?id={user.id})
+
+🎶 **Song Details:**
+├ **Song Name:** {song_name}
+├ **Platform:** {platform}
+└ **Song Link:** {song_link}
+
+⏰ **Time:** {message.date.strftime('%Y-%m-%d %H:%M:%S')}
+━━━━━━━━━━━━━━━━━━━━━
+"""
+        
+        await client.send_message(
+            chat_id=LOG_CHANNEL_ID,
+            text=log_message,
+            disable_web_page_preview=True
+        )
+        
+    except Exception as e:
+        print(f"Error sending log: {e}")
 
 
 def generate_progress_bar(played: str, duration: str, style: str = CURRENT_STYLE) -> str:
@@ -91,6 +181,10 @@ def track_markup(
         ],
         [
             InlineKeyboardButton(
+                text="💬 Support",
+                url=SUPPORT_CHAT_LINK,
+            ),
+            InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
             )
@@ -135,6 +229,10 @@ def stream_markup_timer(
         ],
         [
             InlineKeyboardButton(
+                text="💬 Support",
+                url=SUPPORT_CHAT_LINK,
+            ),
+            InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"], 
                 callback_data="close"
             )
@@ -166,6 +264,10 @@ def stream_markup(
             InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
         [
+            InlineKeyboardButton(
+                text="💬 Support",
+                url=SUPPORT_CHAT_LINK,
+            ),
             InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"], 
                 callback_data="close"
@@ -210,6 +312,10 @@ def playlist_markup(
         ],
         [
             InlineKeyboardButton(
+                text="💬 Support",
+                url=SUPPORT_CHAT_LINK,
+            ),
+            InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
             ),
@@ -248,6 +354,10 @@ def livestream_markup(
             ),
         ],
         [
+            InlineKeyboardButton(
+                text="💬 Support",
+                url=SUPPORT_CHAT_LINK,
+            ),
             InlineKeyboardButton(
                 text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
@@ -302,12 +412,18 @@ def slider_markup(
                 callback_data=f"slider B|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
             ),
             InlineKeyboardButton(
-                text=_["CLOSE_BUTTON"],
-                callback_data=f"forceclose {truncated_query}|{user_id}",
+                text="💬 Support",
+                url=SUPPORT_CHAT_LINK,
             ),
             InlineKeyboardButton(
                 text="▷",
                 callback_data=f"slider F|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text=_["CLOSE_BUTTON"],
+                callback_data=f"forceclose {truncated_query}|{user_id}",
             ),
         ],
     ]
