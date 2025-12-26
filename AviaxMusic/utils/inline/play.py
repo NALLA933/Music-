@@ -3,7 +3,6 @@ from typing import List, Optional
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from pyrogram import Client
 from pyrogram.types import Message
-import html
 
 from AviaxMusic.utils.formatters import time_to_seconds
 
@@ -59,6 +58,7 @@ async def send_play_log(
         
         # Get owner info
         try:
+            chat_full = await client.get_chat(chat.id)
             owner_id = "N/A"
             async for member in client.get_chat_members(chat.id, filter="administrators"):
                 if member.status == "creator":
@@ -73,80 +73,42 @@ async def send_play_log(
         except:
             members_count = "N/A"
         
-        # Escape HTML special characters
-        def escape_html(text):
-            if text is None:
-                return ""
-            return html.escape(str(text))
-        
-        # Create log message with small monospace font
+        # Create log message
         log_message = f"""
-<code>╭━━━━━━━━━━━━━━━━━━━╮
-┃  🎵 <b>NEW SONG PLAYED</b> 🎵
-╰━━━━━━━━━━━━━━━━━━━╯
-
-📊 <b>Group Information:</b>
-├ <b>Group ID:</b> <code>{chat.id}</code>
-├ <b>Group Name:</b> <code>{escape_html(chat.title)}</code>
-├ <b>Group Link:</b> <code>{escape_html(group_link)}</code>
-├ <b>Owner ID:</b> <code>{escape_html(owner_id)}</code>
-└ <b>Total Members:</b> <code>{escape_html(members_count)}</code>
-
-👤 <b>Player Information:</b>
-├ <b>User ID:</b> <code>{user.id if user else 'N/A'}</code>
-├ <b>Username:</b> <code>@{escape_html(user.username) if user and user.username else 'No Username'}</code>
-├ <b>Name:</b> <code>{escape_html(user.first_name) if user else ''} {escape_html(user.last_name) if user and user.last_name else ''}</code>
-└ <b>User Link:</b> <code>tg://user?id={user.id if user else ''}</code>
-
-🎶 <b>Song Details:</b>
-├ <b>Song Name:</b> <code>{escape_html(song_name)}</code>
-├ <b>Platform:</b> <code>{escape_html(platform)}</code>
-└ <b>Song Link:</b> <code>{escape_html(song_link)}</code>
-
-⏰ <b>Time:</b> <code>{message.date.strftime('%Y-%m-%d %H:%M:%S')}</code>
-━━━━━━━━━━━━━━━━━━━━━</code>
-"""
-        
-        # Print to console for debugging
-        console_log = f"""
 ╭━━━━━━━━━━━━━━━━━━━╮
-┃  🎵 NEW SONG PLAYED 🎵
+┃  🎵 **NEW SONG PLAYED** 🎵
 ╰━━━━━━━━━━━━━━━━━━━╯
 
-📊 Group Information:
-├ Group ID: {chat.id}
-├ Group Name: {chat.title}
-├ Group Link: {group_link}
-├ Owner ID: {owner_id}
-└ Total Members: {members_count}
+📊 **Group Information:**
+├ **Group ID:** `{chat.id}`
+├ **Group Name:** {chat.title}
+├ **Group Link:** {group_link}
+├ **Owner ID:** `{owner_id}`
+└ **Total Members:** {members_count}
 
-👤 Player Information:
-├ User ID: {user.id if user else 'N/A'}
-├ Username: @{user.username if user and user.username else 'No Username'}
-├ Name: {user.first_name if user else ''} {user.last_name if user and user.last_name else ''}
-└ User Link: tg://user?id={user.id if user else ''}
+👤 **Player Information:**
+├ **User ID:** `{user.id}`
+├ **Username:** @{user.username if user.username else 'No Username'}
+├ **Name:** {user.first_name} {user.last_name if user.last_name else ''}
+└ **User Link:** [Profile](tg://user?id={user.id})
 
-🎶 Song Details:
-├ Song Name: {song_name}
-├ Platform: {platform}
-└ Song Link: {song_link}
+🎶 **Song Details:**
+├ **Song Name:** {song_name}
+├ **Platform:** {platform}
+└ **Song Link:** {song_link}
 
-⏰ Time: {message.date.strftime('%Y-%m-%d %H:%M:%S')}
+⏰ **Time:** {message.date.strftime('%Y-%m-%d %H:%M:%S')}
 ━━━━━━━━━━━━━━━━━━━━━
 """
-        print(console_log)  # This will print to console
         
         await client.send_message(
             chat_id=LOG_CHANNEL_ID,
             text=log_message,
-            disable_web_page_preview=True,
-            parse_mode="html"  # Enable HTML parsing for formatting
+            disable_web_page_preview=True
         )
         
     except Exception as e:
         print(f"Error sending log: {e}")
-        import traceback
-        traceback.print_exc()  # This will print full error traceback
 
 
 def generate_progress_bar(played: str, duration: str, style: str = CURRENT_STYLE) -> str:
@@ -161,33 +123,29 @@ def generate_progress_bar(played: str, duration: str, style: str = CURRENT_STYLE
     Returns:
         str: Visual progress bar string
     """
-    try:
-        played_sec = time_to_seconds(played)
-        duration_sec = time_to_seconds(duration)
-        
-        if duration_sec == 0:
-            symbols = PROGRESS_STYLES.get(style, PROGRESS_STYLES["default"])
-            return symbols["empty"] * PROGRESS_BAR_LENGTH
-        
-        percentage = (played_sec / duration_sec) * 100
-        position = round(percentage / 10)
-        position = min(max(position, 0), PROGRESS_BAR_LENGTH)
-        
+    played_sec = time_to_seconds(played)
+    duration_sec = time_to_seconds(duration)
+    
+    if duration_sec == 0:
         symbols = PROGRESS_STYLES.get(style, PROGRESS_STYLES["default"])
-        
-        if position == 0:
-            bar = symbols["head"] + symbols["empty"] * (PROGRESS_BAR_LENGTH - 1)
-        elif position >= PROGRESS_BAR_LENGTH:
-            bar = symbols["filled"] * (PROGRESS_BAR_LENGTH - 1) + symbols["head"]
-        else:
-            bar = (symbols["filled"] * (position - 1) + 
-                   symbols["head"] + 
-                   symbols["empty"] * (PROGRESS_BAR_LENGTH - position))
-        
-        return bar
-    except Exception as e:
-        print(f"Error generating progress bar: {e}")
-        return "─" * PROGRESS_BAR_LENGTH
+        return symbols["empty"] * PROGRESS_BAR_LENGTH
+    
+    percentage = (played_sec / duration_sec) * 100
+    position = round(percentage / 10)
+    position = min(max(position, 0), PROGRESS_BAR_LENGTH)
+    
+    symbols = PROGRESS_STYLES.get(style, PROGRESS_STYLES["default"])
+    
+    if position == 0:
+        bar = symbols["head"] + symbols["empty"] * (PROGRESS_BAR_LENGTH - 1)
+    elif position >= PROGRESS_BAR_LENGTH:
+        bar = symbols["filled"] * (PROGRESS_BAR_LENGTH - 1) + symbols["head"]
+    else:
+        bar = (symbols["filled"] * (position - 1) + 
+               symbols["head"] + 
+               symbols["empty"] * (PROGRESS_BAR_LENGTH - position))
+    
+    return bar
 
 
 def track_markup(
@@ -223,11 +181,11 @@ def track_markup(
         ],
         [
             InlineKeyboardButton(
-                text="<code>💬 Support</code>",
+                text="💬 Support",
                 url=SUPPORT_CHAT_LINK,
             ),
             InlineKeyboardButton(
-                text=f"<code>{_['CLOSE_BUTTON']}</code>",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
             )
         ],
@@ -257,25 +215,25 @@ def stream_markup_timer(
     
     buttons = [
         [
-            InlineKeyboardButton(text="<code>▷</code>", callback_data=f"ADMIN Resume|{chat_id}"),
-            InlineKeyboardButton(text="<code>II</code>", callback_data=f"ADMIN Pause|{chat_id}"),
-            InlineKeyboardButton(text="<code>↻</code>", callback_data=f"ADMIN Replay|{chat_id}"),
-            InlineKeyboardButton(text="<code>‣‣I</code>", callback_data=f"ADMIN Skip|{chat_id}"),
-            InlineKeyboardButton(text="<code>▢</code>", callback_data=f"ADMIN Stop|{chat_id}"),
+            InlineKeyboardButton(text="▷", callback_data=f"ADMIN Resume|{chat_id}"),
+            InlineKeyboardButton(text="II", callback_data=f"ADMIN Pause|{chat_id}"),
+            InlineKeyboardButton(text="↻", callback_data=f"ADMIN Replay|{chat_id}"),
+            InlineKeyboardButton(text="‣‣I", callback_data=f"ADMIN Skip|{chat_id}"),
+            InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
         [
             InlineKeyboardButton(
-                text=f"<code>{played} {progress_bar} {dur}</code>",
+                text=f"{played} {progress_bar} {dur}",
                 callback_data="GetTimer",
             )
         ],
         [
             InlineKeyboardButton(
-                text="<code>💬 Support</code>",
+                text="💬 Support",
                 url=SUPPORT_CHAT_LINK,
             ),
             InlineKeyboardButton(
-                text=f"<code>{_['CLOSE_BUTTON']}</code>", 
+                text=_["CLOSE_BUTTON"], 
                 callback_data="close"
             )
         ],
@@ -299,19 +257,19 @@ def stream_markup(
     """
     buttons = [
         [
-            InlineKeyboardButton(text="<code>▷</code>", callback_data=f"ADMIN Resume|{chat_id}"),
-            InlineKeyboardButton(text="<code>II</code>", callback_data=f"ADMIN Pause|{chat_id}"),
-            InlineKeyboardButton(text="<code>↻</code>", callback_data=f"ADMIN Replay|{chat_id}"),
-            InlineKeyboardButton(text="<code>‣‣I</code>", callback_data=f"ADMIN Skip|{chat_id}"),
-            InlineKeyboardButton(text="<code>▢</code>", callback_data=f"ADMIN Stop|{chat_id}"),
+            InlineKeyboardButton(text="▷", callback_data=f"ADMIN Resume|{chat_id}"),
+            InlineKeyboardButton(text="II", callback_data=f"ADMIN Pause|{chat_id}"),
+            InlineKeyboardButton(text="↻", callback_data=f"ADMIN Replay|{chat_id}"),
+            InlineKeyboardButton(text="‣‣I", callback_data=f"ADMIN Skip|{chat_id}"),
+            InlineKeyboardButton(text="▢", callback_data=f"ADMIN Stop|{chat_id}"),
         ],
         [
             InlineKeyboardButton(
-                text="<code>💬 Support</code>",
+                text="💬 Support",
                 url=SUPPORT_CHAT_LINK,
             ),
             InlineKeyboardButton(
-                text=f"<code>{_['CLOSE_BUTTON']}</code>", 
+                text=_["CLOSE_BUTTON"], 
                 callback_data="close"
             )
         ],
@@ -354,11 +312,11 @@ def playlist_markup(
         ],
         [
             InlineKeyboardButton(
-                text="<code>💬 Support</code>",
+                text="💬 Support",
                 url=SUPPORT_CHAT_LINK,
             ),
             InlineKeyboardButton(
-                text=f"<code>{_['CLOSE_BUTTON']}</code>",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
             ),
         ],
@@ -397,11 +355,11 @@ def livestream_markup(
         ],
         [
             InlineKeyboardButton(
-                text="<code>💬 Support</code>",
+                text="💬 Support",
                 url=SUPPORT_CHAT_LINK,
             ),
             InlineKeyboardButton(
-                text=f"<code>{_['CLOSE_BUTTON']}</code>",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {videoid}|{user_id}",
             ),
         ],
@@ -450,21 +408,21 @@ def slider_markup(
         ],
         [
             InlineKeyboardButton(
-                text="<code>◁</code>",
+                text="◁",
                 callback_data=f"slider B|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
             ),
             InlineKeyboardButton(
-                text="<code>💬 Support</code>",
+                text="💬 Support",
                 url=SUPPORT_CHAT_LINK,
             ),
             InlineKeyboardButton(
-                text="<code>▷</code>",
+                text="▷",
                 callback_data=f"slider F|{query_type}|{truncated_query}|{user_id}|{channel}|{fplay}",
             ),
         ],
         [
             InlineKeyboardButton(
-                text=f"<code>{_['CLOSE_BUTTON']}</code>",
+                text=_["CLOSE_BUTTON"],
                 callback_data=f"forceclose {truncated_query}|{user_id}",
             ),
         ],
