@@ -1,4 +1,4 @@
-From pyrogram.enums import ParseMode
+from pyrogram.enums import ParseMode
 
 from AviaxMusic import app
 from AviaxMusic.utils.database import is_on_off
