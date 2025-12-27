@@ -56,11 +56,8 @@ async def stream(
                 pass
         return
     
-    # Forceplay: Stop current stream instantly without any delays
     if forceplay:
         await Aviax.force_stop_stream(chat_id)
-        # Clear queue immediately for forceplay
-        db[chat_id] = []
     
     if streamtype == "playlist":
         msg = f"{_['play_19']}\n\n"
@@ -116,8 +113,6 @@ async def stream(
                         except:
                             pass
                     raise AssistantErr(_["play_14"])
-                
-                # Direct URL handling - no delays for streaming
                 await Aviax.join_call(
                     chat_id,
                     original_chat_id,
@@ -125,13 +120,10 @@ async def stream(
                     video=status,
                     image=thumbnail,
                 )
-                
-                # Queue handling with direct URL support
-                queue_identifier = file_path if direct else f"vid_{vidid}"
                 await put_queue(
                     chat_id,
                     original_chat_id,
-                    queue_identifier,
+                    file_path if direct else f"vid_{vidid}",
                     title,
                     duration_min,
                     user_name,
@@ -140,7 +132,6 @@ async def stream(
                     "video" if video else "audio",
                     forceplay=forceplay,
                 )
-                
                 img = await gen_thumb(vidid)
                 button = stream_markup(_, chat_id)
                 run = await app.send_photo(
@@ -156,7 +147,6 @@ async def stream(
                 )
                 db[chat_id][0]["mystic"] = run
                 db[chat_id][0]["markup"] = "stream"
-        
         if count == 0:
             # Clean up temporary cookies file if created
             if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
@@ -186,7 +176,6 @@ async def stream(
                 caption=_["play_21"].format(position, link),
                 reply_markup=upl,
             )
-    
     elif streamtype == "youtube":
         link = result["link"]
         vidid = result["vidid"]
@@ -195,8 +184,10 @@ async def stream(
         thumbnail = result["thumb"]
         status = True if video else None
         
-        # Get fresh metadata with cookies to bypass age restrictions
+        # FIX: Use cookies to get updated metadata for age-restricted/explicit content
+        # This is the key fix for songs like "I'm done" by Manu
         try:
+            # Get fresh metadata with cookies to bypass age restrictions
             updated_title, updated_duration_min, duration_sec, updated_thumbnail, updated_vidid = await YouTube.details(
                 link, videoid=False, cookies_file=cookies_file
             )
@@ -214,6 +205,8 @@ async def stream(
             print(f"[YouTube] Successfully fetched metadata with cookies for: {title}")
         except Exception as e:
             print(f"[YouTube] Failed to get updated details with cookies for {vidid}: {e}. Using original metadata.")
+            # Fall back to original result data as safety measure
+            # Continue with original metadata
         
         current_queue = db.get(chat_id)
 
@@ -227,7 +220,6 @@ async def stream(
             return await app.send_message(original_chat_id, "You can't add more than 10 songs to the queue.")
 
         try:
-            # Get direct streaming URL from YouTube.download
             file_path, direct = await YouTube.download(
                 vidid, mystic, videoid=True, video=status, cookies_file=cookies_file
             )
@@ -242,12 +234,10 @@ async def stream(
             raise AssistantErr(_["play_14"])
 
         if await is_active_chat(chat_id):
-            # Queue handling with direct URL support
-            queue_identifier = file_path if direct else f"vid_{vidid}"
             await put_queue(
                 chat_id,
                 original_chat_id,
-                queue_identifier,
+                file_path if direct else f"vid_{vidid}",
                 title,
                 duration_min,
                 user_name,
@@ -265,8 +255,6 @@ async def stream(
         else:
             if not forceplay:
                 db[chat_id] = []
-            
-            # Join call immediately with direct URL - no delays
             await Aviax.join_call(
                 chat_id,
                 original_chat_id,
@@ -274,13 +262,10 @@ async def stream(
                 video=status,
                 image=thumbnail,
             )
-            
-            # Queue handling with direct URL support
-            queue_identifier = file_path if direct else f"vid_{vidid}"
             await put_queue(
                 chat_id,
                 original_chat_id,
-                queue_identifier,
+                file_path if direct else f"vid_{vidid}",
                 title,
                 duration_min,
                 user_name,
@@ -289,7 +274,6 @@ async def stream(
                 "video" if video else "audio",
                 forceplay=forceplay,
             )
-            
             img = await gen_thumb(vidid)
             button = stream_markup(_, chat_id)
             run = await app.send_photo(
@@ -312,7 +296,6 @@ async def stream(
                 os.unlink(cookies_file)
             except:
                 pass
-    
     elif streamtype == "soundcloud":
         file_path = result["filepath"]
         title = result["title"]
@@ -370,7 +353,6 @@ async def stream(
                 os.unlink(cookies_file)
             except:
                 pass
-    
     elif streamtype == "telegram":
         file_path = result["path"]
         link = result["link"]
@@ -430,7 +412,6 @@ async def stream(
                 os.unlink(cookies_file)
             except:
                 pass
-    
     elif streamtype == "live":
         link = result["link"]
         vidid = result["vidid"]
@@ -520,7 +501,6 @@ async def stream(
                 os.unlink(cookies_file)
             except:
                 pass
-    
     elif streamtype == "index":
         link = result
         title = "ɪɴᴅᴇx ᴏʀ ᴍ3ᴜ8 ʟɪɴᴋ"
