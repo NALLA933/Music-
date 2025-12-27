@@ -46,12 +46,14 @@ async def download_song(link: str, cookies_file=None):
             #print(f"File already exists: {file_path}")
             return file_path
         
-    # Try API first
+    # Try API first with 20 second timeout
     song_url = f"{API_URL}/song/{video_id}?api={API_KEY}"
     async with aiohttp.ClientSession() as session:
         for attempt in range(10):
             try:
-                async with session.get(song_url) as response:
+                # Add 20 second timeout for API response
+                timeout = aiohttp.ClientTimeout(total=20)
+                async with session.get(song_url, timeout=timeout) as response:
                     if response.status != 200:
                         raise Exception(f"API request failed with status code {response.status}")
                 
@@ -68,6 +70,10 @@ async def download_song(link: str, cookies_file=None):
                     else:
                         error_msg = data.get("error") or data.get("message") or f"Unexpected status '{status}'"
                         raise Exception(f"API error: {error_msg}")
+            except asyncio.TimeoutError:
+                print("⏱️ API timeout after 20 seconds, falling back to yt-dlp")
+                # Fallback to yt-dlp with cookies
+                return await yt_dlp_download_audio(link, cookies_file)
             except Exception as e:
                 print(f"[FAIL] {e}")
                 # Fallback to yt-dlp with cookies
@@ -119,6 +125,12 @@ async def yt_dlp_download_audio(link: str, cookies_file=None):
             "no_warnings": True,
             "cookiefile": cookie_file,
             "extract_flat": False,
+            # Added options as requested
+            "age_limit": 25,
+            "geo_bypass": True,
+            "ignoreerrors": True,
+            # Modern user agent to bypass bot detection
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -146,12 +158,14 @@ async def download_video(link: str, cookies_file=None):
         if os.path.exists(file_path):
             return file_path
         
-    # Try API first
+    # Try API first with 20 second timeout
     video_url = f"{VIDEO_API_URL}/video/{video_id}?api={API_KEY}"
     async with aiohttp.ClientSession() as session:
         for attempt in range(10):
             try:
-                async with session.get(video_url) as response:
+                # Add 20 second timeout for API response
+                timeout = aiohttp.ClientTimeout(total=20)
+                async with session.get(video_url, timeout=timeout) as response:
                     if response.status != 200:
                         raise Exception(f"API request failed with status code {response.status}")
                 
@@ -168,6 +182,10 @@ async def download_video(link: str, cookies_file=None):
                     else:
                         error_msg = data.get("error") or data.get("message") or f"Unexpected status '{status}'"
                         raise Exception(f"API error: {error_msg}")
+            except asyncio.TimeoutError:
+                print("⏱️ API timeout after 20 seconds, falling back to yt-dlp")
+                # Fallback to yt-dlp with cookies
+                return await yt_dlp_download_video(link, cookies_file)
             except Exception as e:
                 print(f"[FAIL] {e}")
                 # Fallback to yt-dlp with cookies
@@ -223,6 +241,12 @@ async def yt_dlp_download_video(link: str, cookies_file=None):
                 'key': 'FFmpegVideoConvertor',
                 'preferedformat': 'mp4',
             }],
+            # Added options as requested
+            "age_limit": 25,
+            "geo_bypass": True,
+            "ignoreerrors": True,
+            # Modern user agent to bypass bot detection
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -249,6 +273,10 @@ async def check_file_size(link, cookies_file=None):
         proc = await asyncio.create_subprocess_exec(
             "yt-dlp",
             "--cookies", cookie_file,
+            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "--age-limit", "25",
+            "--geo-bypass",
+            "--ignore-errors",
             "-J",
             link,
             stdout=asyncio.subprocess.PIPE,
@@ -355,9 +383,9 @@ class YouTubeAPI:
                     duration_sec = int(time_to_seconds(duration_min))
                 return title, duration_min, duration_sec, thumbnail, vidid
         except Exception as e:
-            print(f"VideosSearch failed: {e}")
+            print(f"VideosSearch failed (possibly age-restricted): {e}")
         
-        # Fallback to yt-dlp with cookies
+        # Fallback to yt-dlp with cookies - especially for age-restricted content like "I'm done" by Manu
         cookie_file = cookie_txt_file(cookies_file)
         if cookie_file:
             try:
@@ -366,6 +394,12 @@ class YouTubeAPI:
                     "no_warnings": True,
                     "cookiefile": cookie_file,
                     "extract_flat": False,
+                    # Added options for age-restricted content
+                    "age_limit": 25,
+                    "geo_bypass": True,
+                    "ignoreerrors": True,
+                    # Modern user agent
+                    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                 }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(link, download=False)
@@ -433,6 +467,10 @@ class YouTubeAPI:
         proc = await asyncio.create_subprocess_exec(
             "yt-dlp",
             "--cookies", cookie_file,
+            "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "--age-limit", "25",
+            "--geo-bypass",
+            "--ignore-errors",
             "-g",
             "-f",
             "best[height<=?720][width<=?1280]",
@@ -457,7 +495,7 @@ class YouTubeAPI:
             return []
             
         playlist = await shell_cmd(
-            f"yt-dlp -i --get-id --flat-playlist --cookies {cookie_file} --playlist-end {limit} --skip-download {link}"
+            f"yt-dlp -i --get-id --flat-playlist --cookies {cookie_file} --user-agent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' --age-limit 25 --geo-bypass --ignore-errors --playlist-end {limit} --skip-download {link}"
         )
         try:
             result = playlist.split("\n")
@@ -499,7 +537,15 @@ class YouTubeAPI:
         if not cookie_file:
             return [], link
             
-        ytdl_opts = {"quiet": True, "cookiefile": cookie_file}
+        ytdl_opts = {
+            "quiet": True, 
+            "cookiefile": cookie_file,
+            # Added options
+            "age_limit": 25,
+            "geo_bypass": True,
+            "ignoreerrors": True,
+            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        }
         ydl = yt_dlp.YoutubeDL(ytdl_opts)
         with ydl:
             formats_available = []
@@ -577,6 +623,11 @@ class YouTubeAPI:
                 "quiet": True,
                 "cookiefile": cookie_file,
                 "no_warnings": True,
+                # Added options as requested
+                "age_limit": 25,
+                "ignoreerrors": True,
+                # Modern user agent
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
             info = x.extract_info(link, False)
@@ -599,6 +650,11 @@ class YouTubeAPI:
                 "quiet": True,
                 "cookiefile": cookie_file,
                 "no_warnings": True,
+                # Added options as requested
+                "age_limit": 25,
+                "ignoreerrors": True,
+                # Modern user agent
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
             info = x.extract_info(link, False)
@@ -625,6 +681,11 @@ class YouTubeAPI:
                 "cookiefile": cookie_file,
                 "prefer_ffmpeg": True,
                 "merge_output_format": "mp4",
+                # Added options as requested
+                "age_limit": 25,
+                "ignoreerrors": True,
+                # Modern user agent
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
             x.download([link])
@@ -651,6 +712,11 @@ class YouTubeAPI:
                         "preferredquality": "192",
                     }
                 ],
+                # Added options as requested
+                "age_limit": 25,
+                "ignoreerrors": True,
+                # Modern user agent
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             }
             x = yt_dlp.YoutubeDL(ydl_optssx)
             x.download([link])
@@ -695,6 +761,10 @@ class YouTubeAPI:
                 proc = await asyncio.create_subprocess_exec(
                     "yt-dlp",
                     "--cookies", cookie_file,
+                    "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    "--age-limit", "25",
+                    "--geo-bypass",
+                    "--ignore-errors",
                     "-g",
                     "-f",
                     "best[height<=?720][width<=?1280]",
