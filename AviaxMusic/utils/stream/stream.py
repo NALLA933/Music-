@@ -1,4 +1,5 @@
 import os
+import tempfile
 from random import randint
 from typing import Union
 
@@ -29,10 +30,35 @@ async def stream(
     spotify: Union[bool, str] = None,
     forceplay: Union[bool, str] = None,
 ):
+    # Cookie Handling Logic
+    cookies_file = None
+    if hasattr(config, 'YOUTUBE_COOKIES') and config.YOUTUBE_COOKIES:
+        try:
+            # Check if it's a file path
+            if os.path.isfile(config.YOUTUBE_COOKIES):
+                cookies_file = config.YOUTUBE_COOKIES
+                print(f"[YouTube] Using cookies file: {cookies_file}")
+            else:
+                # Treat as cookie string and create temporary file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+                    f.write(config.YOUTUBE_COOKIES)
+                    cookies_file = f.name
+                    print(f"[YouTube] Created temporary cookies file: {cookies_file}")
+        except Exception as e:
+            print(f"[YouTube] Error handling cookies: {e}")
+    
     if not result:
+        # Clean up temporary cookies file if created
+        if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+            try:
+                os.unlink(cookies_file)
+            except:
+                pass
         return
+    
     if forceplay:
         await Aviax.force_stop_stream(chat_id)
+    
     if streamtype == "playlist":
         msg = f"{_['play_19']}\n\n"
         count = 0
@@ -46,8 +72,9 @@ async def stream(
                     duration_sec,
                     thumbnail,
                     vidid,
-                ) = await YouTube.details(search, False if spotify else True)
-            except:
+                ) = await YouTube.details(search, False if spotify else True, cookies_file=cookies_file)
+            except Exception as e:
+                print(f"[YouTube] Error getting details for {search}: {e}")
                 continue
             if str(duration_min) == "None":
                 continue
@@ -75,9 +102,16 @@ async def stream(
                 status = True if video else None
                 try:
                     file_path, direct = await YouTube.download(
-                        vidid, mystic, video=status, videoid=True
+                        vidid, mystic, video=status, videoid=True, cookies_file=cookies_file
                     )
-                except:
+                except Exception as e:
+                    print(f"[YouTube] Download failed for {vidid}: {e}")
+                    # Clean up temporary cookies file if created
+                    if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+                        try:
+                            os.unlink(cookies_file)
+                        except:
+                            pass
                     raise AssistantErr(_["play_14"])
                 await Aviax.join_call(
                     chat_id,
@@ -114,6 +148,12 @@ async def stream(
                 db[chat_id][0]["mystic"] = run
                 db[chat_id][0]["markup"] = "stream"
         if count == 0:
+            # Clean up temporary cookies file if created
+            if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+                try:
+                    os.unlink(cookies_file)
+                except:
+                    pass
             return
         else:
             link = await AviaxBin(msg)
@@ -124,6 +164,12 @@ async def stream(
                 car = msg
             carbon = await Carbon.generate(car, randint(100, 10000000))
             upl = close_markup(_)
+            # Clean up temporary cookies file if created
+            if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+                try:
+                    os.unlink(cookies_file)
+                except:
+                    pass
             return await app.send_photo(
                 original_chat_id,
                 photo=carbon,
@@ -137,18 +183,30 @@ async def stream(
         duration_min = result["duration_min"]
         thumbnail = result["thumb"]
         status = True if video else None
-    
+        
         current_queue = db.get(chat_id)
 
-        
         if current_queue is not None and len(current_queue) >= 10:
+            # Clean up temporary cookies file if created
+            if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+                try:
+                    os.unlink(cookies_file)
+                except:
+                    pass
             return await app.send_message(original_chat_id, "You can't add more than 10 songs to the queue.")
 
         try:
             file_path, direct = await YouTube.download(
-                vidid, mystic, videoid=True, video=status
+                vidid, mystic, videoid=True, video=status, cookies_file=cookies_file
             )
-        except:
+        except Exception as e:
+            print(f"[YouTube] Download failed for {vidid}: {e}")
+            # Clean up temporary cookies file if created
+            if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+                try:
+                    os.unlink(cookies_file)
+                except:
+                    pass
             raise AssistantErr(_["play_14"])
 
         if await is_active_chat(chat_id):
@@ -207,6 +265,13 @@ async def stream(
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "stream"
+        
+        # Clean up temporary cookies file if created
+        if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+            try:
+                os.unlink(cookies_file)
+            except:
+                pass
     elif streamtype == "soundcloud":
         file_path = result["filepath"]
         title = result["title"]
@@ -257,6 +322,13 @@ async def stream(
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
+        
+        # Clean up temporary cookies file if created
+        if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+            try:
+                os.unlink(cookies_file)
+            except:
+                pass
     elif streamtype == "telegram":
         file_path = result["path"]
         link = result["link"]
@@ -309,6 +381,13 @@ async def stream(
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
+        
+        # Clean up temporary cookies file if created
+        if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+            try:
+                os.unlink(cookies_file)
+            except:
+                pass
     elif streamtype == "live":
         link = result["link"]
         vidid = result["vidid"]
@@ -338,8 +417,24 @@ async def stream(
         else:
             if not forceplay:
                 db[chat_id] = []
-            n, file_path = await YouTube.video(link)
-            if n == 0:
+            try:
+                n, file_path = await YouTube.video(link, cookies_file=cookies_file)
+                if n == 0:
+                    # Clean up temporary cookies file if created
+                    if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+                        try:
+                            os.unlink(cookies_file)
+                        except:
+                            pass
+                    raise AssistantErr(_["str_3"])
+            except Exception as e:
+                print(f"[YouTube] Live stream download failed: {e}")
+                # Clean up temporary cookies file if created
+                if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+                    try:
+                        os.unlink(cookies_file)
+                    except:
+                        pass
                 raise AssistantErr(_["str_3"])
             await Aviax.join_call(
                 chat_id,
@@ -375,6 +470,13 @@ async def stream(
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
+        
+        # Clean up temporary cookies file if created
+        if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+            try:
+                os.unlink(cookies_file)
+            except:
+                pass
     elif streamtype == "index":
         link = result
         title = "ɪɴᴅᴇx ᴏʀ ᴍ3ᴜ8 ʟɪɴᴋ"
@@ -426,3 +528,10 @@ async def stream(
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
             await mystic.delete()
+        
+        # Clean up temporary cookies file if created
+        if cookies_file and 'tmp' in cookies_file and os.path.exists(cookies_file):
+            try:
+                os.unlink(cookies_file)
+            except:
+                pass
