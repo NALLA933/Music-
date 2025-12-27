@@ -12,7 +12,7 @@ def start_panel(_):
         ],
         [
             InlineKeyboardButton(
-                text="💬 sᴜᴘᴘᴏʀᴛ", 
+                text="💬 ꜱᴜᴘᴘᴏʀᴛ", 
                 url=config.SUPPORT_GROUP
             ),
         ],
@@ -30,7 +30,7 @@ def private_panel(_):
         ],
         [
             InlineKeyboardButton(
-                text="📖 ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅs", 
+                text="📖 ʜᴇʟᴘ & ᴄᴏᴍᴍᴀɴᴅꜱ", 
                 callback_data="settings_back_helper"
             )
         ],
@@ -40,7 +40,7 @@ def private_panel(_):
                 user_id=config.OWNER_ID
             ),
             InlineKeyboardButton(
-                text="👥 sᴜᴘᴘᴏʀᴛ", 
+                text="👥 ꜱᴜᴘᴘᴏʀᴛ", 
                 url=config.SUPPORT_GROUP
             ),
         ],
