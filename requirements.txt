@@ -22,7 +22,8 @@ speedtest-cli
 spotipy
 unidecode
 uvloop; sys_platform != "win32"
-yt-dlp>=2025.1.15
-yt-dlp-youtube-oauth2
+git+https://github.com/yt-dlp/yt-dlp.git@master
+cryptography
+pyopenssl
 youtube-search
 youtube-search-python
