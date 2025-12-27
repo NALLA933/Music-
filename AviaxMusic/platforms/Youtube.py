@@ -54,15 +54,18 @@ async def download_song(link: str, cookies_file=None):
         # Fallback to yt-dlp download
         return await yt_dlp_download_audio(link, cookies_file)
     
-    # Build yt-dlp command for direct URL fetching
+    # Build yt-dlp command for direct URL fetching with updated options
     cmd = [
         "yt-dlp",
         "--get-url",                     # Get URL instead of downloading
-        "-f", "bestaudio",               # Best audio format
+        "-f", "bestaudio/best",          # Best audio format
         "--cookies", cookie_file,        # Use cookies for age-restricted content
         "--age-limit", "25",             # Bypass age restriction
         "--geo-bypass",                  # Bypass geographic restrictions
         "--ignore-errors",               # Continue on errors
+        "--no-check-certificate",        # Don't check SSL certificate
+        "--quiet",                       # Quiet mode
+        "--extractor-args", "youtube:player_client=android,web",  # Fix signature issues
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",  # Modern UA
         link
     ]
@@ -113,12 +116,20 @@ async def yt_dlp_download_audio(link: str, cookies_file=None):
             "no_warnings": True,
             "cookiefile": cookie_file,
             "extract_flat": False,
+            "skip_download": False,  # We want to download
+            "nocheckcertificate": True,
             # Added options for age-restricted content
             "age_limit": 25,
             "geo_bypass": True,
             "ignoreerrors": True,
             # Modern user agent to bypass bot detection
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            # Fix signature issues
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"]
+                }
+            },
         }
         
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -219,17 +230,26 @@ async def yt_dlp_download_video(link: str, cookies_file=None):
     
     try:
         ydl_opts = {
-            "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
+            "format": "bestvideo[height<=?720][width<=?1280]+bestaudio/best",
             "outtmpl": "downloads/%(id)s.%(ext)s",
             "quiet": True,
             "no_warnings": True,
             "cookiefile": cookie_file,
+            "extract_flat": False,
+            "skip_download": False,
+            "nocheckcertificate": True,
             "merge_output_format": "mp4",
             "postprocessors": [{
                 'key': 'FFmpegVideoConvertor',
                 'preferedformat': 'mp4',
             }],
-            # Added options as requested
+            # Added options for signature solving
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"]
+                }
+            },
+            # Other options
             "age_limit": 25,
             "geo_bypass": True,
             "ignoreerrors": True,
@@ -265,6 +285,8 @@ async def check_file_size(link, cookies_file=None):
             "--age-limit", "25",
             "--geo-bypass",
             "--ignore-errors",
+            "--no-check-certificate",
+            "--quiet",
             "-J",
             link,
             stdout=asyncio.subprocess.PIPE,
@@ -382,12 +404,19 @@ class YouTubeAPI:
                     "no_warnings": True,
                     "cookiefile": cookie_file,
                     "extract_flat": True,  # FAST METADATA EXTRACTION
+                    "nocheckcertificate": True,
                     # Added options for age-restricted content
                     "age_limit": 25,
                     "geo_bypass": True,
                     "ignoreerrors": True,
                     # Modern user agent
                     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                    # Fix signature issues
+                    "extractor_args": {
+                        "youtube": {
+                            "player_client": ["android", "web"]
+                        }
+                    },
                 }
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(link, download=False)
@@ -451,18 +480,26 @@ class YouTubeAPI:
         cookie_file = cookie_txt_file(cookies_file)
         if not cookie_file:
             return 0, "No cookies found. Cannot download video."
-            
-        proc = await asyncio.create_subprocess_exec(
+        
+        # Updated command with new options
+        cmd = [
             "yt-dlp",
             "--cookies", cookie_file,
             "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "--age-limit", "25",
             "--geo-bypass",
             "--ignore-errors",
+            "--no-check-certificate",
+            "--quiet",
+            "--extractor-args", "youtube:player_client=android,web",
             "-g",
             "-f",
             "best[height<=?720][width<=?1280]",
-            f"{link}",
+            link
+        ]
+            
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -481,10 +518,15 @@ class YouTubeAPI:
         cookie_file = cookie_txt_file(cookies_file)
         if not cookie_file:
             return []
-            
-        playlist = await shell_cmd(
-            f"yt-dlp -i --get-id --flat-playlist --cookies {cookie_file} --user-agent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' --age-limit 25 --geo-bypass --ignore-errors --playlist-end {limit} --skip-download {link}"
-        )
+        
+        # Updated command with new options
+        cmd = f"yt-dlp -i --get-id --flat-playlist --cookies {cookie_file} "
+        cmd += "--user-agent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' "
+        cmd += "--age-limit 25 --geo-bypass --ignore-errors --no-check-certificate --quiet "
+        cmd += "--extractor-args youtube:player_client=android,web "
+        cmd += f"--playlist-end {limit} --skip-download {link}"
+        
+        playlist = await shell_cmd(cmd)
         try:
             result = playlist.split("\n")
             for key in result:
@@ -528,7 +570,16 @@ class YouTubeAPI:
         ytdl_opts = {
             "quiet": True, 
             "cookiefile": cookie_file,
-            # Added options
+            "nocheckcertificate": True,
+            "extract_flat": False,
+            "skip_download": True,
+            # Added options for signature solving
+            "extractor_args": {
+                "youtube": {
+                    "player_client": ["android", "web"]
+                }
+            },
+            # Other options
             "age_limit": 25,
             "geo_bypass": True,
             "ignoreerrors": True,
@@ -611,7 +662,15 @@ class YouTubeAPI:
                 "quiet": True,
                 "cookiefile": cookie_file,
                 "no_warnings": True,
-                # Added options as requested
+                "extract_flat": False,
+                "skip_download": False,
+                # Added options for signature solving
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "web"]
+                    }
+                },
+                # Other options
                 "age_limit": 25,
                 "ignoreerrors": True,
                 # Modern user agent
@@ -631,14 +690,22 @@ class YouTubeAPI:
                 raise Exception("No cookies found. Cannot download video.")
                 
             ydl_optssx = {
-                "format": "(bestvideo[height<=?720][width<=?1280][ext=mp4])+(bestaudio[ext=m4a])",
+                "format": "bestvideo[height<=?720][width<=?1280]+bestaudio/best",
                 "outtmpl": "downloads/%(id)s.%(ext)s",
                 "geo_bypass": True,
                 "nocheckcertificate": True,
                 "quiet": True,
                 "cookiefile": cookie_file,
                 "no_warnings": True,
-                # Added options as requested
+                "extract_flat": False,
+                "skip_download": False,
+                # Added options for signature solving
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "web"]
+                    }
+                },
+                # Other options
                 "age_limit": 25,
                 "ignoreerrors": True,
                 # Modern user agent
@@ -669,7 +736,15 @@ class YouTubeAPI:
                 "cookiefile": cookie_file,
                 "prefer_ffmpeg": True,
                 "merge_output_format": "mp4",
-                # Added options as requested
+                "extract_flat": False,
+                "skip_download": False,
+                # Added options for signature solving
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "web"]
+                    }
+                },
+                # Other options
                 "age_limit": 25,
                 "ignoreerrors": True,
                 # Modern user agent
@@ -700,7 +775,15 @@ class YouTubeAPI:
                         "preferredquality": "192",
                     }
                 ],
-                # Added options as requested
+                "extract_flat": False,
+                "skip_download": False,
+                # Added options for signature solving
+                "extractor_args": {
+                    "youtube": {
+                        "player_client": ["android", "web"]
+                    }
+                },
+                # Other options
                 "age_limit": 25,
                 "ignoreerrors": True,
                 # Modern user agent
@@ -746,17 +829,25 @@ class YouTubeAPI:
                     # Fallback to yt-dlp audio
                     downloaded_file = await yt_dlp_download_audio(link, cookies_file)
             else:
-                proc = await asyncio.create_subprocess_exec(
+                # Updated command with new options
+                cmd = [
                     "yt-dlp",
                     "--cookies", cookie_file,
                     "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
                     "--age-limit", "25",
                     "--geo-bypass",
                     "--ignore-errors",
+                    "--no-check-certificate",
+                    "--quiet",
+                    "--extractor-args", "youtube:player_client=android,web",
                     "-g",
                     "-f",
                     "best[height<=?720][width<=?1280]",
-                    f"{link}",
+                    link
+                ]
+                
+                proc = await asyncio.create_subprocess_exec(
+                    *cmd,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
