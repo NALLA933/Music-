@@ -46,68 +46,56 @@ async def download_song(link: str, cookies_file=None):
             #print(f"File already exists: {file_path}")
             return file_path
         
-    # Try API first with 20 second timeout
-    song_url = f"{API_URL}/song/{video_id}?api={API_KEY}"
-    async with aiohttp.ClientSession() as session:
-        for attempt in range(10):
-            try:
-                # Add 20 second timeout for API response
-                timeout = aiohttp.ClientTimeout(total=20)
-                async with session.get(song_url, timeout=timeout) as response:
-                    if response.status != 200:
-                        raise Exception(f"API request failed with status code {response.status}")
-                
-                    data = await response.json()
-                    status = data.get("status", "").lower()
-
-                    if status == "done":
-                        download_url = data.get("link")
-                        if not download_url:
-                            raise Exception("API response did not provide a download URL.")
-                        break
-                    elif status == "downloading":
-                        await asyncio.sleep(4)
-                    else:
-                        error_msg = data.get("error") or data.get("message") or f"Unexpected status '{status}'"
-                        raise Exception(f"API error: {error_msg}")
-            except asyncio.TimeoutError:
-                print("⏱️ API timeout after 20 seconds, falling back to yt-dlp")
-                # Fallback to yt-dlp with cookies
-                return await yt_dlp_download_audio(link, cookies_file)
-            except Exception as e:
-                print(f"[FAIL] {e}")
-                # Fallback to yt-dlp with cookies
-                return await yt_dlp_download_audio(link, cookies_file)
-        else:
-            print("⏱️ Max retries reached. Still downloading...")
-            # Fallback to yt-dlp with cookies
+    # ===== INSTANT VC JOINING: GET DIRECT AUDIO URL =====
+    # Use yt-dlp with --get-url to fetch direct audio URL (bypasses API & downloads)
+    cookie_file = cookie_txt_file(cookies_file)
+    if not cookie_file:
+        print("No cookies found for audio download.")
+        # Fallback to yt-dlp download
+        return await yt_dlp_download_audio(link, cookies_file)
+    
+    # Build yt-dlp command for direct URL fetching
+    cmd = [
+        "yt-dlp",
+        "--get-url",                     # Get URL instead of downloading
+        "-f", "bestaudio",               # Best audio format
+        "--cookies", cookie_file,        # Use cookies for age-restricted content
+        "--age-limit", "25",             # Bypass age restriction
+        "--geo-bypass",                  # Bypass geographic restrictions
+        "--ignore-errors",               # Continue on errors
+        "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",  # Modern UA
+        link
+    ]
+    
+    try:
+        # Execute with timeout to prevent hanging
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        # Timeout after 5 seconds (adjust as needed)
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=5.0)
+        
+        if proc.returncode != 0:
+            print(f"[FAIL] yt-dlp --get-url failed: {stderr.decode()}")
+            # Fallback to regular download
             return await yt_dlp_download_audio(link, cookies_file)
-
-        try:
-            file_format = data.get("format", "mp3")
-            file_extension = file_format.lower()
-            file_name = f"{video_id}.{file_extension}"
-            download_folder = "downloads"
-            os.makedirs(download_folder, exist_ok=True)
-            file_path = os.path.join(download_folder, file_name)
-
-            async with session.get(download_url) as file_response:
-                with open(file_path, 'wb') as f:
-                    while True:
-                        chunk = await file_response.content.read(8192)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                return file_path
-        except aiohttp.ClientError as e:
-            print(f"Network or client error occurred while downloading: {e}")
-            # Fallback to yt-dlp with cookies
+        
+        direct_url = stdout.decode().strip()
+        if not direct_url:
+            print("[FAIL] No direct URL obtained from yt-dlp.")
             return await yt_dlp_download_audio(link, cookies_file)
-        except Exception as e:
-            print(f"Error occurred while downloading song: {e}")
-            # Fallback to yt-dlp with cookies
-            return await yt_dlp_download_audio(link, cookies_file)
-    return await yt_dlp_download_audio(link, cookies_file)
+        
+        print(f"[SUCCESS] Got direct audio URL: {direct_url[:80]}...")
+        return direct_url  # Return direct URL for instant streaming
+        
+    except asyncio.TimeoutError:
+        print("[FAIL] yt-dlp --get-url timeout (5s), falling back to download.")
+        return await yt_dlp_download_audio(link, cookies_file)
+    except Exception as e:
+        print(f"[FAIL] Error getting direct audio URL: {e}")
+        return await yt_dlp_download_audio(link, cookies_file)
 
 
 async def yt_dlp_download_audio(link: str, cookies_file=None):
@@ -125,7 +113,7 @@ async def yt_dlp_download_audio(link: str, cookies_file=None):
             "no_warnings": True,
             "cookiefile": cookie_file,
             "extract_flat": False,
-            # Added options as requested
+            # Added options for age-restricted content
             "age_limit": 25,
             "geo_bypass": True,
             "ignoreerrors": True,
@@ -393,7 +381,7 @@ class YouTubeAPI:
                     "quiet": True,
                     "no_warnings": True,
                     "cookiefile": cookie_file,
-                    "extract_flat": False,
+                    "extract_flat": True,  # FAST METADATA EXTRACTION
                     # Added options for age-restricted content
                     "age_limit": 25,
                     "geo_bypass": True,
