@@ -184,6 +184,30 @@ async def stream(
         thumbnail = result["thumb"]
         status = True if video else None
         
+        # FIX: Use cookies to get updated metadata for age-restricted/explicit content
+        # This is the key fix for songs like "I'm done" by Manu
+        try:
+            # Get fresh metadata with cookies to bypass age restrictions
+            updated_title, updated_duration_min, duration_sec, updated_thumbnail, updated_vidid = await YouTube.details(
+                link, videoid=False, cookies_file=cookies_file
+            )
+            
+            # Use the updated metadata if available
+            if updated_title and updated_title != "Unknown Title":
+                title = updated_title
+            if updated_duration_min and updated_duration_min != "0:00":
+                duration_min = updated_duration_min
+            if updated_thumbnail:
+                thumbnail = updated_thumbnail
+            if updated_vidid:
+                vidid = updated_vidid
+                
+            print(f"[YouTube] Successfully fetched metadata with cookies for: {title}")
+        except Exception as e:
+            print(f"[YouTube] Failed to get updated details with cookies for {vidid}: {e}. Using original metadata.")
+            # Fall back to original result data as safety measure
+            # Continue with original metadata
+        
         current_queue = db.get(chat_id)
 
         if current_queue is not None and len(current_queue) >= 10:
