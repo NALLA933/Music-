@@ -163,7 +163,7 @@ async def stream(
                 try:
                     os.unlink(cookies_file)
                 except:
-                pass
+                    pass
             return
         else:
             link = await AviaxBin(msg)
