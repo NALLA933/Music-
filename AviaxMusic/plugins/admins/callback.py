@@ -2,6 +2,7 @@ import asyncio
 
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.errors import MessageNotModified  # Added import
 
 from AviaxMusic import YouTube, app
 from AviaxMusic.core.call import Aviax
@@ -95,7 +96,9 @@ async def del_back_playlist(client, CallbackQuery, _):
                 return await CallbackQuery.edit_message_text(_["admin_36"])
             try:
                 await CallbackQuery.edit_message_text(_["admin_37"].format(upvote))
-            except:
+            except MessageNotModified:
+                await CallbackQuery.answer()
+            except Exception:
                 pass
             command = counter
             mention = "ᴜᴘᴠᴏᴛᴇs"
@@ -118,7 +121,12 @@ async def del_back_playlist(client, CallbackQuery, _):
                 ]
             )
             await CallbackQuery.answer(_["admin_40"], show_alert=True)
-            return await CallbackQuery.edit_message_reply_markup(reply_markup=upl)
+            try:
+                await CallbackQuery.edit_message_reply_markup(reply_markup=upl)
+            except MessageNotModified:
+                await CallbackQuery.answer()
+            except Exception:
+                pass
     else:
         is_non_admin = await is_nonadmin_chat(CallbackQuery.message.chat.id)
         if not is_non_admin:
@@ -167,9 +175,14 @@ async def del_back_playlist(client, CallbackQuery, _):
                 if popped:
                     await auto_clean(popped)
                 if not check:
-                    await CallbackQuery.edit_message_text(
-                        f"➻ sᴛʀᴇᴀᴍ sᴋɪᴩᴩᴇᴅ 🎄\n│ \n└ʙʏ : {mention} 🥀"
-                    )
+                    try:
+                        await CallbackQuery.edit_message_text(
+                            f"➻ sᴛʀᴇᴀᴍ sᴋɪᴩᴩᴇᴅ 🎄\n│ \n└ʙʏ : {mention} 🥀"
+                        )
+                    except MessageNotModified:
+                        await CallbackQuery.answer()
+                    except Exception:
+                        pass
                     await CallbackQuery.message.reply_text(
                         text=_["admin_6"].format(
                             mention, CallbackQuery.message.chat.title
@@ -182,9 +195,14 @@ async def del_back_playlist(client, CallbackQuery, _):
                         return
             except:
                 try:
-                    await CallbackQuery.edit_message_text(
-                        f"➻ sᴛʀᴇᴀᴍ sᴋɪᴩᴩᴇᴅ 🎄\n│ \n└ʙʏ : {mention} 🥀"
-                    )
+                    try:
+                        await CallbackQuery.edit_message_text(
+                            f"➻ sᴛʀᴇᴀᴍ sᴋɪᴩᴩᴇᴅ 🎄\n│ \n└ʙʏ : {mention} 🥀"
+                        )
+                    except MessageNotModified:
+                        await CallbackQuery.answer()
+                    except Exception:
+                        pass
                     await CallbackQuery.message.reply_text(
                         text=_["admin_6"].format(
                             mention, CallbackQuery.message.chat.title
@@ -240,7 +258,12 @@ async def del_back_playlist(client, CallbackQuery, _):
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
-            await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            try:
+                await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            except MessageNotModified:
+                await CallbackQuery.answer()
+            except Exception:
+                pass
         elif "vid_" in queued:
             mystic = await CallbackQuery.message.reply_text(
                 _["call_7"], disable_web_page_preview=True
@@ -276,7 +299,12 @@ async def del_back_playlist(client, CallbackQuery, _):
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "stream"
-            await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            try:
+                await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            except MessageNotModified:
+                await CallbackQuery.answer()
+            except Exception:
+                pass
             await mystic.delete()
         elif "index_" in queued:
             try:
@@ -291,7 +319,12 @@ async def del_back_playlist(client, CallbackQuery, _):
             )
             db[chat_id][0]["mystic"] = run
             db[chat_id][0]["markup"] = "tg"
-            await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            try:
+                await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            except MessageNotModified:
+                await CallbackQuery.answer()
+            except Exception:
+                pass
         else:
             if videoid == "telegram":
                 image = None
@@ -347,7 +380,12 @@ async def del_back_playlist(client, CallbackQuery, _):
                 )
                 db[chat_id][0]["mystic"] = run
                 db[chat_id][0]["markup"] = "stream"
-            await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            try:
+                await CallbackQuery.edit_message_text(txt, reply_markup=close_markup(_))
+            except MessageNotModified:
+                await CallbackQuery.answer()
+            except Exception:
+                pass
 
 
 async def markup_timer():
@@ -385,9 +423,14 @@ async def markup_timer():
                         seconds_to_min(playing[0]["played"]),
                         playing[0]["dur"],
                     )
-                    await mystic.edit_reply_markup(
-                        reply_markup=InlineKeyboardMarkup(buttons)
-                    )
+                    try:
+                        await mystic.edit_reply_markup(
+                            reply_markup=InlineKeyboardMarkup(buttons)
+                        )
+                    except MessageNotModified:
+                        continue
+                    except Exception:
+                        continue
                 except:
                     continue
             except:
