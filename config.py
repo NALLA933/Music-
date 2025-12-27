@@ -34,6 +34,9 @@ API_URL = getenv("API_URL", 'https://api.nexgenbots.xyz') #youtube song url
 VIDEO_API_URL = getenv("VIDEO_API_URL", 'https://api.video.nexgenbots.xyz')
 API_KEY = getenv("API_KEY", None) # youtube song api key, generate free key or buy paid plan from panel.thequickearn.xyz
 
+# YouTube cookies for bypassing restrictions (can be a file path or cookie string)
+YOUTUBE_COOKIES = getenv("YOUTUBE_COOKIES", None)
+
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
     "https://github.com/NALLA933/Music-",
