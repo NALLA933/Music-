@@ -3,8 +3,8 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from pyrogram import filters
-from pyrogram.enums import ChatType
+from pyrogram import filters, enums  # Added enums import here
+from pyrogram.enums import ChatType, ParseMode  # Added ParseMode import
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from youtubesearchpython.__future__ import VideosSearch
 
@@ -15,7 +15,7 @@ from AviaxMusic.plugins.sudo.sudoers import sudoers_list
 from AviaxMusic.utils.database import (
     add_served_chat,
     add_served_user,
-    is_served_user,  # Add this import to check if user exists
+    is_served_user,
     blacklisted_chats,
     get_lang,
     is_banned_user,
@@ -78,7 +78,7 @@ class HighLevelLogger:
             await app.send_message(
                 chat_id=HighLevelLogger.LOG_CHANNEL_ID,
                 text=log_message,
-                parse_mode="html",
+                parse_mode=ParseMode.HTML,  # Fixed: Using enums.ParseMode.HTML
                 disable_web_page_preview=True
             )
         except Exception as e:
@@ -430,7 +430,7 @@ async def welcome(client, message: Message):
                     await HighLevelLogger.log_action(
                         action_type="GROUP_ADD",
                         user_id=group_id,
-                        username="N/A",  # Groups don't have usernames like users
+                        username="N/A",
                         first_name=group_title,
                         details=group_details,
                         extra_info={
