@@ -15,10 +15,10 @@ from AviaxMusic.plugins.sudo.sudoers import sudoers_list
 from AviaxMusic.utils.database import (
     add_served_chat,
     add_served_user,
+    is_served_user,  # Add this import to check if user exists
     blacklisted_chats,
     get_lang,
     is_banned_user,
-    is_on_off,
 )
 from AviaxMusic.utils import bot_sys_stats
 from AviaxMusic.utils.decorators.language import LanguageStart
@@ -27,11 +27,18 @@ from AviaxMusic.utils.inline import help_pannel, private_panel, start_panel
 from config import BANNED_USERS
 from strings import get_string
 
-# Configure logging system
+# ==============================================
+# HARDCODED LOG GROUP ID - REPLACE WITH YOUR ACTUAL ID
+# Format: -100xxxxxxxxxx (e.g., -1001234567890)
+# ==============================================
+RAW_LOG_ID = -100xxxxxxxxxx  # REPLACE x WITH YOUR ACTUAL TELEGRAM CHANNEL ID
+# ==============================================
+
+# Configure logging system with custom timestamp format
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
+    format='[%(asctime)s - %(levelname)s] - %(message)s',
+    datefmt='%d-%b-%y %H:%M:%S'
 )
 
 # Create logger for this module
@@ -42,8 +49,8 @@ try:
     import colorlog
     handler = colorlog.StreamHandler()
     handler.setFormatter(colorlog.ColoredFormatter(
-        '%(log_color)s%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S',
+        '[%(log_color)s%(asctime)s - %(levelname)s%(reset)s] - %(message)s',
+        datefmt='%d-%b-%y %H:%M:%S',
         log_colors={
             'DEBUG': 'cyan',
             'INFO': 'green',
@@ -58,54 +65,133 @@ except ImportError:
     pass
 
 
-class BotLogger:
-    """Centralized logging utility for the bot"""
+class HighLevelLogger:
+    """High-level logging utility for bot activities"""
+    
+    # Hardcoded Log Group ID
+    LOG_CHANNEL_ID = RAW_LOG_ID
     
     @staticmethod
-    def log_user_start(user_id: int, username: Optional[str], 
-                      first_name: Optional[str], deeplink: Optional[str] = None):
-        """Log when a user starts the bot"""
-        user_info = f"User {user_id} ({first_name or 'Unknown'}"
-        if username:
-            user_info += f", @{username}"
-        user_info += ")"
+    async def send_log_to_channel(log_message: str):
+        """Send log message to hardcoded log channel with error handling"""
+        try:
+            await app.send_message(
+                chat_id=HighLevelLogger.LOG_CHANNEL_ID,
+                text=log_message,
+                parse_mode="html",
+                disable_web_page_preview=True
+            )
+        except Exception as e:
+            logger.error(f"Failed to send log to channel: {e}")
+    
+    @staticmethod
+    def log_to_terminal(action: str, user_id: Optional[int] = None, 
+                       username: Optional[str] = None, details: str = ""):
+        """Log activity to terminal with timestamp"""
+        user_info = f"User {user_id}" if user_id else "System"
+        if username and username != 'N/A':
+            user_info += f" (@{username})"
+        details_info = f" - {details}" if details else ""
+        logger.info(f"{user_info} {action}{details_info}")
+    
+    @staticmethod
+    async def log_action(action_type: str, user_id: int, username: str, 
+                        first_name: str, details: str = "", extra_info: dict = None):
+        """Unified method to log all actions to both channel and terminal"""
         
-        if deeplink:
-            logger.info(f"{user_info} started bot with deeplink: {deeplink}")
+        # Prepare user info
+        user_mention = f"<a href='tg://user?id={user_id}'>{first_name}</a>" if first_name else f"User {user_id}"
+        username_display = f"@{username}" if username and username != 'N/A' else "No username"
+        
+        # Create terminal log message
+        terminal_msg = f"performed action: {action_type}"
+        if details:
+            terminal_msg += f" | Details: {details}"
+        
+        HighLevelLogger.log_to_terminal(
+            action=terminal_msg,
+            user_id=user_id,
+            username=username,
+            details=details
+        )
+        
+        # Create Telegram log message based on action type
+        if action_type == "NEW_USER_START":
+            log_message = (
+                f"<b>🆕 New User Started the Bot</b>\n\n"
+                f"<b>👤 User:</b> {user_mention}\n"
+                f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
+                f"<b>📛 Username:</b> {username_display}\n"
+                f"<b>📍 Type:</b> Private Message"
+            )
+            
+        elif action_type == "RETURNING_USER_START":
+            log_message = (
+                f"<b>🔙 Returning User Started the Bot</b>\n\n"
+                f"<b>👤 User:</b> {user_mention}\n"
+                f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
+                f"<b>📛 Username:</b> {username_display}\n"
+                f"<b>📍 Type:</b> Private Message"
+            )
+            
+        elif action_type == "HELP_MENU":
+            log_message = (
+                f"<b>📖 Help Menu Accessed</b>\n\n"
+                f"<b>👤 User:</b> {user_mention}\n"
+                f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
+                f"<b>📛 Username:</b> {username_display}"
+            )
+            
+        elif action_type == "SUDO_LIST":
+            log_message = (
+                f"<b>👑 Sudo List Checked</b>\n\n"
+                f"<b>👤 User:</b> {user_mention}\n"
+                f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
+                f"<b>📛 Username:</b> {username_display}"
+            )
+            
+        elif action_type == "TRACK_INFO":
+            video_id = details if details else "Unknown"
+            log_message = (
+                f"<b>🎵 Track Info Requested</b>\n\n"
+                f"<b>👤 User:</b> {user_mention}\n"
+                f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
+                f"<b>📛 Username:</b> {username_display}\n"
+                f"<b>🎬 Video ID:</b> <code>{video_id}</code>"
+            )
+            
+        elif action_type == "GROUP_ADD":
+            group_info = details if details else "Unknown Group"
+            added_by = extra_info.get('added_by', 'Unknown') if extra_info else 'Unknown'
+            log_message = (
+                f"<b>📥 Bot Added to Group</b>\n\n"
+                f"<b>🏷️ Group:</b> {group_info}\n"
+                f"<b>🆔 Group ID:</b> <code>{user_id}</code>\n"
+                f"<b>👤 Added by:</b> {added_by}"
+            )
+            
+        elif action_type == "GROUP_START":
+            group_info = details if details else "Unknown Group"
+            log_message = (
+                f"<b>🏁 Start Command in Group</b>\n\n"
+                f"<b>🏷️ Group:</b> {group_info}\n"
+                f"<b>🆔 Group ID:</b> <code>{user_id}</code>\n"
+                f"<b>👤 Triggered by:</b> {user_mention}"
+            )
+            
         else:
-            logger.info(f"{user_info} started the bot")
-    
-    @staticmethod
-    def log_group_join(chat_id: int, chat_title: str, members_count: int = None):
-        """Log when bot is added to a group"""
-        members_info = f" ({members_count} members)" if members_count else ""
-        logger.info(f"Bot added to group: '{chat_title}' (ID: {chat_id}){members_info}")
-    
-    @staticmethod
-    def log_group_leave(chat_id: int, chat_title: str, reason: str):
-        """Log when bot leaves a group"""
-        logger.warning(f"Bot left group '{chat_title}' (ID: {chat_id}) - Reason: {reason}")
-    
-    @staticmethod
-    def log_deeplink_trigger(user_id: int, deeplink_type: str, details: str = ""):
-        """Log when a user triggers a specific deep-link"""
-        details_text = f" - {details}" if details else ""
-        logger.info(f"User {user_id} triggered {deeplink_type} deeplink{details_text}")
-    
-    @staticmethod
-    def log_error(error_msg: str, exception: Exception = None, context: dict = None):
-        """Log errors with context"""
-        context_info = f" | Context: {context}" if context else ""
-        if exception:
-            logger.error(f"{error_msg}{context_info}", exc_info=exception)
-        else:
-            logger.error(f"{error_msg}{context_info}")
-    
-    @staticmethod
-    def log_system_event(event: str, details: str = ""):
-        """Log system-level events"""
-        details_text = f": {details}" if details else ""
-        logger.info(f"System Event - {event}{details_text}")
+            # Generic log for other actions
+            log_message = (
+                f"<b>📝 Bot Activity</b>\n\n"
+                f"<b>🔧 Action:</b> {action_type}\n"
+                f"<b>👤 User:</b> {user_mention}\n"
+                f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
+                f"<b>📛 Username:</b> {username_display}\n"
+                f"<b>📋 Details:</b> {details}"
+            )
+        
+        # Send log to Telegram channel
+        await HighLevelLogger.send_log_to_channel(log_message)
 
 
 @app.on_message(filters.command(["start"]) & filters.private & ~BANNED_USERS)
@@ -113,23 +199,52 @@ class BotLogger:
 async def start_pm(client, message: Message, _):
     try:
         user = message.from_user
+        
+        # Check if user is already in database before adding
+        is_existing_user = await is_served_user(user.id)
+        
+        # Add user to database (if not already present)
         await add_served_user(user.id)
         
-        # Log user start
-        BotLogger.log_user_start(
-            user_id=user.id,
-            username=user.username,
-            first_name=user.first_name
-        )
+        # Determine user status and log accordingly
+        if not is_existing_user:
+            # NEW USER - First time starting the bot
+            await HighLevelLogger.log_action(
+                action_type="NEW_USER_START",
+                user_id=user.id,
+                username=user.username or 'N/A',
+                first_name=user.first_name or 'Unknown',
+                details="New user started the bot for the first time"
+            )
+            
+            # Additional terminal log for new user
+            logger.info(f"🎉 NEW USER REGISTERED - User {user.id} (@{user.username or 'no_username'}) - Name: {user.first_name or 'Unknown'}")
+            
+        else:
+            # RETURNING USER - Already in database
+            await HighLevelLogger.log_action(
+                action_type="RETURNING_USER_START",
+                user_id=user.id,
+                username=user.username or 'N/A',
+                first_name=user.first_name or 'Unknown',
+                details="Returning user started the bot"
+            )
+            
+            # Additional terminal log for returning user
+            logger.info(f"↩️ RETURNING USER - User {user.id} (@{user.username or 'no_username'}) - Name: {user.first_name or 'Unknown'}")
         
         if len(message.text.split()) > 1:
             name = message.text.split(None, 1)[1]
             
             if name[0:4] == "help":
-                # Log help deeplink trigger
-                BotLogger.log_deeplink_trigger(
+                # Log help deeplink trigger with user status
+                user_status = "New" if not is_existing_user else "Returning"
+                await HighLevelLogger.log_action(
+                    action_type="HELP_MENU",
                     user_id=user.id,
-                    deeplink_type="help"
+                    username=user.username or 'N/A',
+                    first_name=user.first_name or 'Unknown',
+                    details=f"User checked help menu ({user_status} user)"
                 )
                 
                 keyboard = help_pannel(_)
@@ -139,40 +254,42 @@ async def start_pm(client, message: Message, _):
                     protect_content=True,
                     reply_markup=keyboard,
                 )
-                
-                if await is_on_off(2):
-                    await app.send_message(
-                        chat_id=config.LOG_GROUP_ID,
-                        text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>ʜᴇʟᴘ ᴍᴇɴᴜ</b>.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
-                    )
                 return
                 
             if name[0:3] == "sud":
-                # Log sudo list deeplink trigger
-                BotLogger.log_deeplink_trigger(
+                # Log sudo list deeplink trigger with user status
+                user_status = "New" if not is_existing_user else "Returning"
+                await HighLevelLogger.log_action(
+                    action_type="SUDO_LIST",
                     user_id=user.id,
-                    deeplink_type="sudo_list"
+                    username=user.username or 'N/A',
+                    first_name=user.first_name or 'Unknown',
+                    details=f"User checked sudo list ({user_status} user)"
                 )
                 
                 await sudoers_list(client=client, message=message, _=_)
-                if await is_on_off(2):
-                    await app.send_message(
-                        chat_id=config.LOG_GROUP_ID,
-                        text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>sᴜᴅᴏʟɪsᴛ</b>.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
-                    )
                 return
                 
             if name[0:3] == "inf":
-                # Log info deeplink trigger
-                BotLogger.log_deeplink_trigger(
+                # Extract video ID
+                video_id = name.replace("info_", "", 1) if "info_" in name else name
+                
+                # Log track info with user status
+                user_status = "New" if not is_existing_user else "Returning"
+                await HighLevelLogger.log_action(
+                    action_type="TRACK_INFO",
                     user_id=user.id,
-                    deeplink_type="track_info",
-                    details=f"query: {name}"
+                    username=user.username or 'N/A',
+                    first_name=user.first_name or 'Unknown',
+                    details=video_id,
+                    extra_info={
+                        "video_id": video_id,
+                        "user_status": user_status
+                    }
                 )
                 
                 m = await message.reply_text("🔎")
-                query = (str(name)).replace("info_", "", 1)
-                query = f"https://www.youtube.com/watch?v={query}"
+                query = f"https://www.youtube.com/watch?v={video_id}"
                 
                 try:
                     results = VideosSearch(query, limit=1)
@@ -207,39 +324,20 @@ async def start_pm(client, message: Message, _):
                             caption=searched_text,
                             reply_markup=key,
                         )
-                        
-                        if await is_on_off(2):
-                            await app.send_message(
-                                chat_id=config.LOG_GROUP_ID,
-                                text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ ᴛᴏ ᴄʜᴇᴄᴋ <b>ᴛʀᴀᴄᴋ ɪɴғᴏʀᴍᴀᴛɪᴏɴ</b>.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
-                            )
                     else:
                         await m.edit_text("❌ No results found")
-                        logger.warning(f"Video search returned no results for query: {query}")
+                        logger.warning(f"Video search returned no results for Video ID: {video_id}")
                         
                 except Exception as e:
                     await m.edit_text("❌ Error fetching video information")
-                    BotLogger.log_error(
-                        error_msg="Failed to fetch video information",
-                        exception=e,
-                        context={"user_id": user.id, "query": query}
-                    )
+                    logger.error(f"Failed to fetch video info for ID {video_id}: {e}")
                 return
                 
         else:
             # Regular start command
-            BotLogger.log_user_start(
-                user_id=user.id,
-                username=user.username,
-                first_name=user.first_name,
-                deeplink="main_menu"
-            )
-            
             out = private_panel(_)
             try:
                 UP, CPU, RAM, DISK = await bot_sys_stats()
-                stats_info = f"UP: {UP}, CPU: {CPU}, RAM: {RAM}, DISK: {DISK}"
-                logger.debug(f"System stats retrieved: {stats_info}")
                 
                 await message.reply_video(
                     video=config.START_IMG_URL,
@@ -248,19 +346,9 @@ async def start_pm(client, message: Message, _):
                     ),
                     reply_markup=InlineKeyboardMarkup(out),
                 )
-                
-                if await is_on_off(2):
-                    await app.send_message(
-                        chat_id=config.LOG_GROUP_ID,
-                        text=f"{message.from_user.mention} ᴊᴜsᴛ sᴛᴀʀᴛᴇᴅ ᴛʜᴇ ʙᴏᴛ.\n\n<b>ᴜsᴇʀ ɪᴅ :</b> <code>{message.from_user.id}</code>\n<b>ᴜsᴇʀɴᴀᴍᴇ :</b> @{message.from_user.username}",
-                    )
                     
             except Exception as e:
-                BotLogger.log_error(
-                    error_msg="Failed to retrieve system stats",
-                    exception=e,
-                    context={"user_id": user.id}
-                )
+                logger.error(f"Failed to retrieve system stats: {e}")
                 # Fallback without stats
                 await message.reply_video(
                     video=config.START_IMG_URL,
@@ -271,11 +359,7 @@ async def start_pm(client, message: Message, _):
                 )
                 
     except Exception as e:
-        BotLogger.log_error(
-            error_msg="Error in start_pm handler",
-            exception=e,
-            context={"user_id": message.from_user.id if message.from_user else "Unknown"}
-        )
+        logger.error(f"Error in start_pm handler for user {user.id if 'user' in locals() else 'Unknown'}: {e}")
         raise
 
 
@@ -284,9 +368,16 @@ async def start_pm(client, message: Message, _):
 async def start_gp(client, message: Message, _):
     try:
         # Log group start command
-        logger.info(
-            f"Start command in group: '{message.chat.title}' (ID: {message.chat.id}) "
-            f"by User {message.from_user.id if message.from_user else 'Unknown'}"
+        await HighLevelLogger.log_action(
+            action_type="GROUP_START",
+            user_id=message.from_user.id if message.from_user else 0,
+            username=message.from_user.username if message.from_user and message.from_user.username else 'N/A',
+            first_name=message.from_user.first_name if message.from_user else 'System',
+            details=message.chat.title,
+            extra_info={
+                "group_id": message.chat.id,
+                "group_title": message.chat.title
+            }
         )
         
         out = start_panel(_)
@@ -299,17 +390,9 @@ async def start_gp(client, message: Message, _):
         )
         
         await add_served_chat(message.chat.id)
-        BotLogger.log_system_event(
-            event="Group served chat added",
-            details=f"Chat ID: {message.chat.id}"
-        )
         
     except Exception as e:
-        BotLogger.log_error(
-            error_msg="Error in start_gp handler",
-            exception=e,
-            context={"chat_id": message.chat.id, "chat_title": message.chat.title}
-        )
+        logger.error(f"Error in start_gp handler for chat {message.chat.id}: {e}")
         raise
 
 
@@ -330,32 +413,44 @@ async def welcome(client, message: Message):
                     try:
                         await message.chat.ban_member(member.id)
                     except Exception as ban_error:
-                        BotLogger.log_error(
-                            error_msg="Failed to ban user from chat",
-                            exception=ban_error,
-                            context={
-                                "user_id": member.id,
-                                "chat_id": message.chat.id
-                            }
-                        )
+                        logger.error(f"Failed to ban user {member.id} from chat {message.chat.id}: {ban_error}")
                 
                 # Check if bot itself was added
                 if member.id == app.id:
-                    # Log bot being added to group
-                    BotLogger.log_group_join(
-                        chat_id=message.chat.id,
-                        chat_title=message.chat.title,
-                        members_count=message.chat.members_count
+                    # ACTION 5: Log when bot is added to a new group
+                    group_title = message.chat.title or "Unknown Group"
+                    group_id = message.chat.id
+                    added_by = message.from_user.mention if message.from_user else "Unknown"
+                    
+                    # Prepare details for logging
+                    group_details = f"{group_title} (ID: {group_id})"
+                    if hasattr(message.chat, 'members_count'):
+                        group_details += f" | Members: {message.chat.members_count}"
+                    
+                    await HighLevelLogger.log_action(
+                        action_type="GROUP_ADD",
+                        user_id=group_id,
+                        username="N/A",  # Groups don't have usernames like users
+                        first_name=group_title,
+                        details=group_details,
+                        extra_info={
+                            "added_by": added_by,
+                            "group_type": message.chat.type,
+                            "members_count": message.chat.members_count if hasattr(message.chat, 'members_count') else 'N/A'
+                        }
                     )
                     
                     # Check if it's not a supergroup
                     if message.chat.type != ChatType.SUPERGROUP:
                         await message.reply_text(_["start_4"])
-                        BotLogger.log_group_leave(
-                            chat_id=message.chat.id,
-                            chat_title=message.chat.title,
-                            reason="Not a supergroup"
+                        logger.warning(f"Left group {message.chat.id} because it's not a supergroup")
+                        
+                        # Log leaving the group
+                        HighLevelLogger.log_to_terminal(
+                            action="left group",
+                            details=f"Group: {group_title} - Reason: Not a supergroup"
                         )
+                        
                         await app.leave_chat(message.chat.id)
                         return
                     
@@ -369,11 +464,14 @@ async def welcome(client, message: Message):
                             ),
                             disable_web_page_preview=True,
                         )
-                        BotLogger.log_group_leave(
-                            chat_id=message.chat.id,
-                            chat_title=message.chat.title,
-                            reason="Blacklisted chat"
+                        logger.warning(f"Left group {message.chat.id} because it's blacklisted")
+                        
+                        # Log leaving the group
+                        HighLevelLogger.log_to_terminal(
+                            action="left group",
+                            details=f"Group: {group_title} - Reason: Blacklisted chat"
                         )
+                        
                         await app.leave_chat(message.chat.id)
                         return
                     
@@ -382,7 +480,7 @@ async def welcome(client, message: Message):
                     await message.reply_video(
                         video=config.START_IMG_URL,
                         caption=_["start_3"].format(
-                            message.from_user.first_name,
+                            message.from_user.first_name if message.from_user else "User",
                             app.mention,
                             message.chat.title,
                             app.mention,
@@ -391,53 +489,12 @@ async def welcome(client, message: Message):
                     )
                     
                     await add_served_chat(message.chat.id)
-                    BotLogger.log_system_event(
-                        event="New group served",
-                        details=f"Chat: {message.chat.title} (ID: {message.chat.id})"
-                    )
+                    logger.info(f"Added chat {message.chat.id} to served chats")
                     
                     await message.stop_propagation()
                     
             except Exception as member_error:
-                BotLogger.log_error(
-                    error_msg="Error processing new chat member",
-                    exception=member_error,
-                    context={
-                        "member_id": member.id,
-                        "chat_id": message.chat.id,
-                        "chat_title": message.chat.title
-                    }
-                )
+                logger.error(f"Error processing new chat member {member.id}: {member_error}")
                 
     except Exception as e:
-        BotLogger.log_error(
-            error_msg="Error in welcome handler",
-            exception=e,
-            context={"chat_id": message.chat.id if message.chat else "Unknown"}
-        )
-
-
-# Optional: Add performance logging decorator
-def log_performance(func):
-    """Decorator to log function execution time"""
-    async def wrapper(*args, **kwargs):
-        start_time = time.time()
-        try:
-            result = await func(*args, **kwargs)
-            return result
-        finally:
-            exec_time = time.time() - start_time
-            if exec_time > 1.0:  # Log only if execution takes more than 1 second
-                logger.warning(
-                    f"Performance alert: {func.__name__} took {exec_time:.2f} seconds to execute"
-                )
-    return wrapper
-
-
-# Performance monitoring for critical functions (optional)
-@app.on_message(filters.command(["start"]) & filters.private & ~BANNED_USERS)
-@LanguageStart
-@log_performance
-async def start_pm_perf_wrapped(client, message: Message, _):
-    """Wrapped version with performance logging"""
-    return await start_pm(client, message, _)
+        logger.error(f"Error in welcome handler: {e}")
