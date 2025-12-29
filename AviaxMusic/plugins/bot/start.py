@@ -29,7 +29,7 @@ from strings import get_string
 
 # ==============================================
 # HARDCODED LOG GROUP ID - REPLACE WITH YOUR ACTUAL ID
-# Format: -100xxxxxxxxxx (e.g., -1001234567890)
+# Format: -1003150808065 (e.g., -1001234567890)
 # ==============================================
 RAW_LOG_ID = -100xxxxxxxxxx  # REPLACE x WITH YOUR ACTUAL TELEGRAM CHANNEL ID
 # ==============================================
