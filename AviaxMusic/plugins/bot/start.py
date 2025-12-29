@@ -213,15 +213,20 @@ class HighLevelLogger:
             # Get group type
             group_type = extra_info.get('group_type', 'Unknown') if extra_info else 'Unknown'
             
-            log_message = (
-                f"<b>📥 Bot Added to Group</b>\n\n"
-                f"<b>🏷️ Group:</b> {group_info}\n"
-                f"<b>🆔 Group ID:</b> <code>{group_id}</code>\n"
-                f"<b>🔗 Invite Link:</b> {'<a href="' + invite_link + '">Join Group</a>' if invite_link != 'No Permission' else 'No Permission'}\n"
-                f"<b>👤 Added by:</b> {added_by}\n"
-                f"<b>📊 Group Type:</b> {group_type}\n"
-                f"<b>👥 Members:</b> {extra_info.get('members_count', 'N/A') if extra_info else 'N/A'}"
-            )
+            # Fixed: Use triple quotes for cleaner formatting without quote conflicts
+            if invite_link != 'No Permission':
+                invite_html = f'<a href="{invite_link}">Join Group</a>'
+            else:
+                invite_html = 'No Permission'
+            
+            log_message = f"""<b>📥 Bot Added to Group</b>
+
+<b>🏷️ Group:</b> {group_info}
+<b>🆔 Group ID:</b> <code>{group_id}</code>
+<b>🔗 Invite Link:</b> {invite_html}
+<b>👤 Added by:</b> {added_by}
+<b>📊 Group Type:</b> {group_type}
+<b>👥 Members:</b> {extra_info.get('members_count', 'N/A') if extra_info else 'N/A'}"""
             
         elif action_type == "GROUP_START":
             group_info = details if details else "Unknown Group"
