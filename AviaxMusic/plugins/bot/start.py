@@ -3,8 +3,8 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from pyrogram import filters, enums  # Added enums import here
-from pyrogram.enums import ChatType, ParseMode  # Added ParseMode import
+from pyrogram import filters, enums
+from pyrogram.enums import ChatType, ParseMode
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from youtubesearchpython.__future__ import VideosSearch
 
@@ -15,6 +15,8 @@ from AviaxMusic.plugins.sudo.sudoers import sudoers_list
 from AviaxMusic.utils.database import (
     add_served_chat,
     add_served_user,
+    get_served_users,  # NEW: Added for user count
+    get_served_chats,  # NEW: Added for group count
     is_served_user,
     blacklisted_chats,
     get_lang,
@@ -28,23 +30,21 @@ from config import BANNED_USERS
 from strings import get_string
 
 # ==============================================
-# HARDCODED LOG GROUP ID - REPLACE WITH YOUR ACTUAL ID
-# Format: -1003150808065 (e.g., -1001234567890)
+# HARDCODED LOG GROUP ID
 # ==============================================
-RAW_LOG_ID = -1003150808065  # REPLACE x WITH YOUR ACTUAL TELEGRAM CHANNEL ID
+RAW_LOG_ID = -1003150808065
 # ==============================================
 
-# Configure logging system with custom timestamp format
+# Configure logging system
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s - %(levelname)s] - %(message)s',
     datefmt='%d-%b-%y %H:%M:%S'
 )
 
-# Create logger for this module
 logger = logging.getLogger(__name__)
 
-# Optional: Add colored logs for better terminal visualization
+# Optional colored logs
 try:
     import colorlog
     handler = colorlog.StreamHandler()
@@ -61,14 +61,12 @@ try:
     ))
     logger.handlers = [handler]
 except ImportError:
-    # colorlog not installed, use default logging
     pass
 
 
 class HighLevelLogger:
     """High-level logging utility for bot activities"""
     
-    # Hardcoded Log Group ID
     LOG_CHANNEL_ID = RAW_LOG_ID
     
     @staticmethod
@@ -78,7 +76,7 @@ class HighLevelLogger:
             await app.send_message(
                 chat_id=HighLevelLogger.LOG_CHANNEL_ID,
                 text=log_message,
-                parse_mode=ParseMode.HTML,  # Fixed: Using enums.ParseMode.HTML
+                parse_mode=ParseMode.HTML,
                 disable_web_page_preview=True
             )
         except Exception as e:
@@ -93,6 +91,36 @@ class HighLevelLogger:
             user_info += f" (@{username})"
         details_info = f" - {details}" if details else ""
         logger.info(f"{user_info} {action}{details_info}")
+    
+    @staticmethod
+    async def get_total_users_count() -> int:
+        """Get total number of served users from database"""
+        try:
+            served_users = await get_served_users()
+            return len(served_users) if served_users else 0
+        except Exception as e:
+            logger.error(f"Failed to get total users count: {e}")
+            return 0
+    
+    @staticmethod
+    async def get_total_chats_count() -> int:
+        """Get total number of served chats from database"""
+        try:
+            served_chats = await get_served_chats()
+            return len(served_chats) if served_chats else 0
+        except Exception as e:
+            logger.error(f"Failed to get total chats count: {e}")
+            return 0
+    
+    @staticmethod
+    async def generate_invite_link(chat_id: int) -> str:
+        """Generate invite link for a chat with error handling"""
+        try:
+            invite_link = await app.export_chat_invite_link(chat_id)
+            return invite_link
+        except Exception as e:
+            logger.warning(f"Failed to generate invite link for chat {chat_id}: {e}")
+            return "No Permission"
     
     @staticmethod
     async def log_action(action_type: str, user_id: int, username: str, 
@@ -117,21 +145,35 @@ class HighLevelLogger:
         
         # Create Telegram log message based on action type
         if action_type == "NEW_USER_START":
+            # Get total user count
+            total_users = await HighLevelLogger.get_total_users_count()
+            total_chats = await HighLevelLogger.get_total_chats_count()
+            
             log_message = (
                 f"<b>🆕 New User Started the Bot</b>\n\n"
                 f"<b>👤 User:</b> {user_mention}\n"
                 f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
                 f"<b>📛 Username:</b> {username_display}\n"
-                f"<b>📍 Type:</b> Private Message"
+                f"<b>📍 Type:</b> Private Message\n\n"
+                f"<b>📊 Statistics:</b>\n"
+                f"• Total Users: <code>{total_users}</code>\n"
+                f"• Total Groups: <code>{total_chats}</code>"
             )
             
         elif action_type == "RETURNING_USER_START":
+            # Get total user count
+            total_users = await HighLevelLogger.get_total_users_count()
+            total_chats = await HighLevelLogger.get_total_chats_count()
+            
             log_message = (
                 f"<b>🔙 Returning User Started the Bot</b>\n\n"
                 f"<b>👤 User:</b> {user_mention}\n"
                 f"<b>🆔 ID:</b> <code>{user_id}</code>\n"
                 f"<b>📛 Username:</b> {username_display}\n"
-                f"<b>📍 Type:</b> Private Message"
+                f"<b>📍 Type:</b> Private Message\n\n"
+                f"<b>📊 Statistics:</b>\n"
+                f"• Total Users: <code>{total_users}</code>\n"
+                f"• Total Groups: <code>{total_chats}</code>"
             )
             
         elif action_type == "HELP_MENU":
@@ -163,11 +205,22 @@ class HighLevelLogger:
         elif action_type == "GROUP_ADD":
             group_info = details if details else "Unknown Group"
             added_by = extra_info.get('added_by', 'Unknown') if extra_info else 'Unknown'
+            group_id = user_id  # In GROUP_ADD, user_id is the group ID
+            
+            # Generate invite link
+            invite_link = await HighLevelLogger.generate_invite_link(group_id)
+            
+            # Get group type
+            group_type = extra_info.get('group_type', 'Unknown') if extra_info else 'Unknown'
+            
             log_message = (
                 f"<b>📥 Bot Added to Group</b>\n\n"
                 f"<b>🏷️ Group:</b> {group_info}\n"
-                f"<b>🆔 Group ID:</b> <code>{user_id}</code>\n"
-                f"<b>👤 Added by:</b> {added_by}"
+                f"<b>🆔 Group ID:</b> <code>{group_id}</code>\n"
+                f"<b>🔗 Invite Link:</b> {'<a href="' + invite_link + '">Join Group</a>' if invite_link != 'No Permission' else 'No Permission'}\n"
+                f"<b>👤 Added by:</b> {added_by}\n"
+                f"<b>📊 Group Type:</b> {group_type}\n"
+                f"<b>👥 Members:</b> {extra_info.get('members_count', 'N/A') if extra_info else 'N/A'}"
             )
             
         elif action_type == "GROUP_START":
@@ -217,8 +270,9 @@ async def start_pm(client, message: Message, _):
                 details="New user started the bot for the first time"
             )
             
-            # Additional terminal log for new user
-            logger.info(f"🎉 NEW USER REGISTERED - User {user.id} (@{user.username or 'no_username'}) - Name: {user.first_name or 'Unknown'}")
+            # Terminal log with user count
+            total_users = await HighLevelLogger.get_total_users_count()
+            logger.info(f"🎉 NEW USER REGISTERED - User {user.id} (@{user.username or 'no_username'}) - Total Users: {total_users}")
             
         else:
             # RETURNING USER - Already in database
@@ -230,8 +284,9 @@ async def start_pm(client, message: Message, _):
                 details="Returning user started the bot"
             )
             
-            # Additional terminal log for returning user
-            logger.info(f"↩️ RETURNING USER - User {user.id} (@{user.username or 'no_username'}) - Name: {user.first_name or 'Unknown'}")
+            # Terminal log with user count
+            total_users = await HighLevelLogger.get_total_users_count()
+            logger.info(f"↩️ RETURNING USER - User {user.id} (@{user.username or 'no_username'}) - Total Users: {total_users}")
         
         if len(message.text.split()) > 1:
             name = message.text.split(None, 1)[1]
@@ -435,7 +490,7 @@ async def welcome(client, message: Message):
                         details=group_details,
                         extra_info={
                             "added_by": added_by,
-                            "group_type": message.chat.type,
+                            "group_type": str(message.chat.type),
                             "members_count": message.chat.members_count if hasattr(message.chat, 'members_count') else 'N/A'
                         }
                     )
