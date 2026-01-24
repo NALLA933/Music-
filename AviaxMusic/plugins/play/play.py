@@ -4,7 +4,6 @@ import string
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, InputMediaPhoto, Message
 from pyrogram.errors import MessageNotModified  # Added import
-from pytgcalls.exceptions import NoActiveGroupCall
 
 import config
 from AviaxMusic import Apple, Resso, SoundCloud, Spotify, Telegram, YouTube, app
@@ -361,21 +360,9 @@ async def play_commnd(
         else:
             try:
                 await Aviax.stream_call(url)
-            except NoActiveGroupCall:
-                try:
-                    await mystic.edit_text(_["black_9"])
-                except MessageNotModified:
-                    pass
-                return await app.send_message(
-                    chat_id=config.LOG_GROUP_ID,
-                    text=_["play_17"],
-                )
             except Exception as e:
-                print(f"Error: {e}")
-                try:
-                    return await mystic.edit_text(_["general_2"].format(type(e).__name__))
-                except MessageNotModified:
-                    return
+                await message.reply_text(f"Voice error: {e}")
+                return
             try:
                 await mystic.edit_text(_["str_2"])
             except MessageNotModified:
