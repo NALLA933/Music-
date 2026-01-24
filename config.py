@@ -7,22 +7,22 @@ from pyrogram import filters
 load_dotenv()
 
 # Get this value from my.telegram.org/apps
-API_ID = int(getenv("API_ID"))
-API_HASH = getenv("API_HASH")
+API_ID = int(getenv("API_ID", "35660683"))
+API_HASH = getenv("API_HASH", "7afb42cd73fb5f3501062ffa6a1f87f7")
 
 # Get your token from @BotFather on Telegram.
-BOT_TOKEN = getenv("BOT_TOKEN")
+BOT_TOKEN = getenv("BOT_TOKEN", "8504453753:AAFD5zuyYvOmAWLzXlczzUFeHouW6nxh0JM")
 
 # Get your mongo url from cloud.mongodb.com
-MONGO_DB_URI = getenv("MONGO_DB_URI", None)
+MONGO_DB_URI = getenv("MONGO_DB_URI", "mongodb+srv://hnyx:wywyw2@cluster0.9dxlslv.mongodb.net/?retryWrites=true&w=majority")
 
-DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", 60))
+DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", "60"))
 
 # Chat id of a group for logging bot's activities
-LOG_GROUP_ID = int(getenv("LOG_GROUP_ID", None))
+LOG_GROUP_ID = int(getenv("LOG_GROUP_ID", "-1002059929123"))
 
 # Get this value from @MissRose_Bot on Telegram by /id
-OWNER_ID = int(getenv("OWNER_ID", None))
+OWNER_ID = int(getenv("OWNER_ID", "7818323042"))
 
 ## Fill these variables if you're deploying on heroku.
 # Your heroku app name
@@ -30,9 +30,9 @@ HEROKU_APP_NAME = getenv("HEROKU_APP_NAME")
 # Get it from http://dashboard.heroku.com/account
 HEROKU_API_KEY = getenv("HEROKU_API_KEY")
 
-API_URL = getenv("API_URL", 'https://api.nexgenbots.xyz') #youtube song url
-VIDEO_API_URL = getenv("VIDEO_API_URL", 'https://api.video.nexgenbots.xyz')
-API_KEY = getenv("API_KEY", None) # youtube song api key, generate free key or buy paid plan from panel.thequickearn.xyz
+API_URL = getenv("API_URL", "https://api.nexgenbots.xyz") #youtube song url
+VIDEO_API_URL = getenv("VIDEO_API_URL", "https://api.video.nexgenbots.xyz")
+API_KEY = getenv("API_KEY", "30DxNexGenBots3a3e08") # youtube song api key, generate free key or buy paid plan from panel.thequickearn.xyz
 
 # YouTube cookies for bypassing restrictions (can be a file path or cookie string)
 YOUTUBE_COOKIES = getenv("YOUTUBE_COOKIES", None)
@@ -62,17 +62,17 @@ SPOTIFY_CLIENT_SECRET = getenv("SPOTIFY_CLIENT_SECRET", None)
 
 
 # Maximum limit for fetching playlist's track from youtube, spotify, apple links.
-PLAYLIST_FETCH_LIMIT = int(getenv("PLAYLIST_FETCH_LIMIT", 25))
+PLAYLIST_FETCH_LIMIT = int(getenv("PLAYLIST_FETCH_LIMIT", "25"))
 
 
 # Telegram audio and video file size limit (in bytes)
-TG_AUDIO_FILESIZE_LIMIT = int(getenv("TG_AUDIO_FILESIZE_LIMIT", 104857600))
-TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", 2145386496))
+TG_AUDIO_FILESIZE_LIMIT = int(getenv("TG_AUDIO_FILESIZE_LIMIT", "104857600"))
+TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", "2145386496"))
 # Checkout https://www.gbmb.org/mb-to-bytes for converting mb to bytes
 
 
 # Get your pyrogram v2 session from Replit
-STRING1 = getenv("STRING_SESSION", None)
+STRING1 = getenv("STRING_SESSION", "BQITRnsAeRimAnwhsD7Y7rg0dcWJFZev70hyKiwMavyzb7lyg8ANRWySDAItUHYiLbjB1GkFtXtJce-cC20ZmusRb5tsObEZm2aysX9S3YU46PCGxyhWSY6iib_XqffTce5vJDk6J81PDJiHXns3OSa9IuX9evfIIo77_MNLE3eWd6i-RsyqI61Zw62x4i2N8H2Y37G-oqYB1ypIOYOIo5yeZc-DsveSS89rg18T43qOrDLX7O4UJHo5xcvpSTpYU27rGlx5PaF8jH4IChdYmxCwhk6BtQjALboXrktGksIlib2mS1uZie4FiQW3XUNM5x8iRoqc1oSPuJnFuU1n9d8lE_r9GAAAAAH1bYMHAA")
 STRING2 = getenv("STRING_SESSION2", None)
 STRING3 = getenv("STRING_SESSION3", None)
 STRING4 = getenv("STRING_SESSION4", None)
