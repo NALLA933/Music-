@@ -7,8 +7,7 @@ except ImportError:
 
 from pyrogram import Client, errors
 
-import sys
-if sys.platform != "win32":
+import sys
 
 from pyrogram import Client, errors
 from pyrogram.enums import ChatMemberStatus, ParseMode
