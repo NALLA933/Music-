@@ -7,17 +7,14 @@ from pyrogram import Client
 from pyrogram.types import InlineKeyboardMarkup
 from pytgcalls import PyTgCalls
 from pytgcalls.exceptions import (
-    AlreadyJoined,
-    GroupCallNotFound,
+    AlreadyJoinedError,
+    NoActiveGroupCall,
     TelegramServerError,
 )
-from pytgcalls.types import (
-    AudioPiped,
-    AudioVideoPiped,
-    HighQualityAudio,
-    MediumQualityVideo,
-    StreamAudioEnded,
-)
+from pytgcalls.types import Update
+from pytgcalls.types.input_stream import AudioPiped, AudioVideoPiped
+from pytgcalls.types.input_stream.quality import HighQualityAudio, MediumQualityVideo
+from pytgcalls.types.stream import StreamAudioEnded
 
 import config
 from AviaxMusic import LOGGER, YouTube, app
@@ -51,7 +48,7 @@ async def _clear_(chat_id):
     await remove_active_chat(chat_id)
 
 
-class Call:
+class Call(PyTgCalls):
     def __init__(self):
         self.userbot1 = Client(
             name="AviaxAss1",
@@ -59,39 +56,50 @@ class Call:
             api_hash=config.API_HASH,
             session_string=str(config.STRING1),
         )
-        self.one = PyTgCalls(self.userbot1)
-        
+        self.one = PyTgCalls(
+            self.userbot1,
+            cache_duration=100,
+        )
         self.userbot2 = Client(
             name="AviaxAss2",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING2),
         )
-        self.two = PyTgCalls(self.userbot2)
-        
+        self.two = PyTgCalls(
+            self.userbot2,
+            cache_duration=100,
+        )
         self.userbot3 = Client(
             name="AviaxAss3",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING3),
         )
-        self.three = PyTgCalls(self.userbot3)
-        
+        self.three = PyTgCalls(
+            self.userbot3,
+            cache_duration=100,
+        )
         self.userbot4 = Client(
             name="AviaxAss4",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING4),
         )
-        self.four = PyTgCalls(self.userbot4)
-        
+        self.four = PyTgCalls(
+            self.userbot4,
+            cache_duration=100,
+        )
         self.userbot5 = Client(
             name="AviaxAss5",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             session_string=str(config.STRING5),
         )
-        self.five = PyTgCalls(self.userbot5)
+        self.five = PyTgCalls(
+            self.userbot5,
+            cache_duration=100,
+        )
 
     async def pause_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
@@ -267,6 +275,7 @@ class Call:
         await assistant.join_group_call(
             config.LOG_GROUP_ID,
             AudioVideoPiped(link),
+            stream_type=StreamType().pulse_stream,
         )
         await asyncio.sleep(0.2)
         await assistant.leave_group_call(config.LOG_GROUP_ID)
@@ -289,15 +298,24 @@ class Call:
                 video_parameters=MediumQualityVideo(),
             )
         else:
-            stream = AudioPiped(link, audio_parameters=HighQualityAudio())
+            stream = (
+                AudioVideoPiped(
+                    link,
+                    audio_parameters=HighQualityAudio(),
+                    video_parameters=MediumQualityVideo(),
+                )
+                if video
+                else AudioPiped(link, audio_parameters=HighQualityAudio())
+            )
         try:
             await assistant.join_group_call(
                 chat_id,
                 stream,
+                stream_type=StreamType().pulse_stream,
             )
-        except GroupCallNotFound:
+        except NoActiveGroupCall:
             raise AssistantErr(_["call_8"])
-        except AlreadyJoined:
+        except AlreadyJoinedError:
             raise AssistantErr(_["call_9"])
         except TelegramServerError:
             raise AssistantErr(_["call_10"])
@@ -551,20 +569,32 @@ class Call:
             await self.five.start()
 
     async def decorators(self):
-        @self.one.on_closed_voice_chat
-        @self.two.on_closed_voice_chat
-        @self.three.on_closed_voice_chat
-        @self.four.on_closed_voice_chat
-        @self.five.on_closed_voice_chat
-        async def stream_services_handler(client, chat_id: int):
+        @self.one.on_kicked()
+        @self.two.on_kicked()
+        @self.three.on_kicked()
+        @self.four.on_kicked()
+        @self.five.on_kicked()
+        @self.one.on_closed_voice_chat()
+        @self.two.on_closed_voice_chat()
+        @self.three.on_closed_voice_chat()
+        @self.four.on_closed_voice_chat()
+        @self.five.on_closed_voice_chat()
+        @self.one.on_left()
+        @self.two.on_left()
+        @self.three.on_left()
+        @self.four.on_left()
+        @self.five.on_left()
+        async def stream_services_handler(_, chat_id: int):
             await self.stop_stream(chat_id)
 
-        @self.one.on_stream_end
-        @self.two.on_stream_end
-        @self.three.on_stream_end
-        @self.four.on_stream_end
-        @self.five.on_stream_end
-        async def stream_end_handler(client, update: StreamAudioEnded):
+        @self.one.on_stream_end()
+        @self.two.on_stream_end()
+        @self.three.on_stream_end()
+        @self.four.on_stream_end()
+        @self.five.on_stream_end()
+        async def stream_end_handler1(client, update: Update):
+            if not isinstance(update, StreamAudioEnded):
+                return
             await self.change_stream(client, update.chat_id)
 
 
