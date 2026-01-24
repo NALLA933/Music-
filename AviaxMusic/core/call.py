@@ -5,7 +5,11 @@ from typing import Union
 
 from pyrogram import Client
 from pyrogram.types import InlineKeyboardMarkup
-from pytgcalls import PyTgCalls, StreamType
+from pytgcalls import PyTgCalls
+try:
+    from pytgcalls.types import StreamType
+except ImportError:
+    from pytgcalls.types.stream import StreamType
 from pytgcalls.exceptions import (
     AlreadyJoinedError,
     NoActiveGroupCall,
@@ -14,7 +18,10 @@ from pytgcalls.exceptions import (
 from pytgcalls.types import Update
 from pytgcalls.types.input_stream import AudioPiped, AudioVideoPiped
 from pytgcalls.types.input_stream.quality import HighQualityAudio, MediumQualityVideo
-from pytgcalls.types.stream import StreamAudioEnded
+try:
+    from pytgcalls.types.stream import StreamAudioEnded
+except ImportError:
+    from pytgcalls.types import StreamAudioEnded
 
 import config
 from AviaxMusic import LOGGER, YouTube, app
