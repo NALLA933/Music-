@@ -3,7 +3,7 @@ import string
 
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardMarkup, InputMediaPhoto, Message
-from pyrogram.errors import MessageNotModified  # Added import
+from pyrogram.errors import MessageNotModified
 
 import config
 from AviaxMusic import Apple, Resso, SoundCloud, Spotify, Telegram, YouTube, app
@@ -359,7 +359,8 @@ async def play_commnd(
             return await mystic.delete()
         else:
             try:
-                await Aviax.stream_call(url)
+                await Aviax.start(chat_id)
+                await Aviax.play(url)
             except Exception as e:
                 await message.reply_text(f"Voice error: {e}")
                 return
@@ -367,27 +368,6 @@ async def play_commnd(
                 await mystic.edit_text(_["str_2"])
             except MessageNotModified:
                 pass
-            try:
-                await stream(
-                    _,
-                    mystic,
-                    message.from_user.id,
-                    url,
-                    chat_id,
-                    message.from_user.first_name,
-                    message.chat.id,
-                    video=video,
-                    streamtype="index",
-                    forceplay=fplay,
-                )
-            except Exception as e:
-                print(f"Error: {e}")
-                ex_type = type(e).__name__
-                err = e if ex_type == "AssistantErr" else _["general_2"].format(ex_type)
-                try:
-                    return await mystic.edit_text(err)
-                except MessageNotModified:
-                    return
             return await play_logs(message, streamtype="M3u8 or Index Link")
     else:
         if len(message.command) < 2:
