@@ -35,7 +35,7 @@ VIDEO_API_URL = getenv("VIDEO_API_URL", "https://api.video.nexgenbots.xyz")
 API_KEY = getenv("API_KEY", "30DxNexGenBots3a3e08") # youtube song api key, generate free key or buy paid plan from panel.thequickearn.xyz
 
 # YouTube cookies for bypassing restrictions (can be a file path or cookie string)
-YOUTUBE_COOKIES = getenv("YOUTUBE_COOKIES", "# Netscape HTTP Cookie File
+YOUTUBE_COOKIES = getenv("YOUTUBE_COOKIES", """# Netscape HTTP Cookie File
 # https://curl.haxx.se/rfc/cookie_spec.html
 # This is a generated file! Do not edit.
 
@@ -72,8 +72,7 @@ YOUTUBE_COOKIES = getenv("YOUTUBE_COOKIES", "# Netscape HTTP Cookie File
 .youtube.com	TRUE	/	FALSE	1769252019	ST-hcbf8d	session_logininfo=AFmmF2swRgIhAO8VTU4Ha055pSg-u5mITRMeGezu-4sgrYRpdQUbhyraAiEAg3PNdsGVn9qgpQqgHUwzcVPukCmEF6U1bhx_skbcpx4%3AQUQ3MjNmeGloZHVUVVJpamZMbm1vTmhseWlCcXdRSHptSElZcnJsanlfa2NzQ1p6aEt6UnpLUDZzX2RWNURjdTEwZXVwU3JweVJHMXQxZ1hIRDlrRGU5TXBIWjYtQzF1QzFhWmxJOGp4MEFDQUUta1htMWo5TUM5R2FseHF3SFZYOWt3Y1NZNTd1aXpnVTFkR04yeUpMQl9zZ2Y5dlZ3NzZB
 .youtube.com	TRUE	/	FALSE	1769252059	ST-sobm4z	gs_l=youtube.12.....0.48893......0......ytlcmt5_e2%2Crlmn%3Dmanual_model_longclick_v2_vizier_tune_10_20251223_ast_proto-recordio.0...............&oq=tu%20hai%20kha&itct=CBMQ7VAiEwjM8ufsgqSSAxWoyhYFHTCvJpvKAQSorJD_&csn=Yw-je-cFnYsG8WVv&session_logininfo=AFmmF2swRgIhAO8VTU4Ha055pSg-u5mITRMeGezu-4sgrYRpdQUbhyraAiEAg3PNdsGVn9qgpQqgHUwzcVPukCmEF6U1bhx_skbcpx4%3AQUQ3MjNmeGloZHVUVVJpamZMbm1vTmhseWlCcXdRSHptSElZcnJsanlfa2NzQ1p6aEt6UnpLUDZzX2RWNURjdTEwZXVwU3JweVJHMXQxZ1hIRDlrRGU5TXBIWjYtQzF1QzFhWmxJOGp4MEFDQUUta1htMWo5TUM5R2FseHF3SFZYOWt3Y1NZNTd1aXpnVTFkR04yeUpMQl9zZ2Y5dlZ3NzZB&endpoint=%7B%22clickTrackingParams%22%3A%22CBMQ7VAiEwjM8ufsgqSSAxWoyhYFHTCvJpvKAQSorJD_%22%2C%22commandMetadata%22%3A%7B%22webCommandMetadata%22%3A%7B%22url%22%3A%22%2Fresults%3Fsearch_query%3Dtu%2Bhai%2Bkha%22%2C%22webPageType%22%3A%22WEB_PAGE_TYPE_SEARCH%22%2C%22rootVe%22%3A4724%7D%7D%2C%22searchEndpoint%22%3A%7B%22query%22%3A%22tu%20hai%20kha%22%7D%7D
 .youtube.com	TRUE	/	FALSE	1769252059	ST-1k06sw0	session_logininfo=AFmmF2swRgIhAO8VTU4Ha055pSg-u5mITRMeGezu-4sgrYRpdQUbhyraAiEAg3PNdsGVn9qgpQqgHUwzcVPukCmEF6U1bhx_skbcpx4%3AQUQ3MjNmeGloZHVUVVJpamZMbm1vTmhseWlCcXdRSHptSElZcnJsanlfa2NzQ1p6aEt6UnpLUDZzX2RWNURjdTEwZXVwU3JweVJHMXQxZ1hIRDlrRGU5TXBIWjYtQzF1QzFhWmxJOGp4MEFDQUUta1htMWo5TUM5R2FseHF3SFZYOWt3Y1NZNTd1aXpnVTFkR04yeUpMQl9zZ2Y5dlZ3NzZB
-
-")
+""")
 
 UPSTREAM_REPO = getenv(
     "UPSTREAM_REPO",
