@@ -1,6 +1,6 @@
 import sys
 if sys.platform != "win32":
-    import uvloop
+    uvloop.install()
     uvloop.install()
 
 from pyrogram import Client, errors
