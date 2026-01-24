@@ -7,8 +7,8 @@ from pyrogram import Client
 from pyrogram.types import InlineKeyboardMarkup
 from pytgcalls import PyTgCalls
 from pytgcalls.exceptions import (
-    AlreadyInCall,
-    GroupCallNotFound,
+    AlreadyJoinedError,
+    NoActiveGroupCall,
     TelegramServerError,
 )
 from pytgcalls.types import Update
@@ -311,9 +311,9 @@ class Call(PyTgCalls):
                 chat_id,
                 stream,
             )
-        except GroupCallNotFound:
+        except NoActiveGroupCall:
             raise AssistantErr(_["call_8"])
-        except AlreadyInCall:
+        except AlreadyJoinedError:
             raise AssistantErr(_["call_9"])
         except TelegramServerError:
             raise AssistantErr(_["call_10"])
