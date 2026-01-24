@@ -8,13 +8,11 @@ from pyrogram.types import InlineKeyboardMarkup
 from pytgcalls import PyTgCalls
 from pytgcalls.exceptions import (
     AlreadyJoinedError,
-    NoActiveGroupCall,
     TelegramServerError,
 )
-from pytgcalls.types import Update
+from pytgcalls.types import StreamType, Update
 from pytgcalls.types.input_stream import AudioPiped, AudioVideoPiped
 from pytgcalls.types.input_stream.quality import HighQualityAudio, MediumQualityVideo
-from pytgcalls.types.stream import StreamAudioEnded
 
 import config
 from AviaxMusic import LOGGER, YouTube, app
@@ -59,6 +57,7 @@ class Call(PyTgCalls):
         self.one = PyTgCalls(
             self.userbot1,
             cache_duration=100,
+            stream_type=StreamType().pulse_stream
         )
         self.userbot2 = Client(
             name="AviaxAss2",
@@ -69,6 +68,7 @@ class Call(PyTgCalls):
         self.two = PyTgCalls(
             self.userbot2,
             cache_duration=100,
+            stream_type=StreamType().pulse_stream
         )
         self.userbot3 = Client(
             name="AviaxAss3",
@@ -79,6 +79,7 @@ class Call(PyTgCalls):
         self.three = PyTgCalls(
             self.userbot3,
             cache_duration=100,
+            stream_type=StreamType().pulse_stream
         )
         self.userbot4 = Client(
             name="AviaxAss4",
@@ -89,6 +90,7 @@ class Call(PyTgCalls):
         self.four = PyTgCalls(
             self.userbot4,
             cache_duration=100,
+            stream_type=StreamType().pulse_stream
         )
         self.userbot5 = Client(
             name="AviaxAss5",
@@ -99,6 +101,7 @@ class Call(PyTgCalls):
         self.five = PyTgCalls(
             self.userbot5,
             cache_duration=100,
+            stream_type=StreamType().pulse_stream
         )
 
     async def pause_stream(self, chat_id: int):
@@ -313,12 +316,8 @@ class Call(PyTgCalls):
                 stream,
                 stream_type=StreamType().pulse_stream,
             )
-        except NoActiveGroupCall:
-            raise AssistantErr(_["call_8"])
-        except AlreadyJoinedError:
-            raise AssistantErr(_["call_9"])
-        except TelegramServerError:
-            raise AssistantErr(_["call_10"])
+        except Exception as e:
+            print("Voice error:", e)
         await add_active_chat(chat_id)
         await music_on(chat_id)
         if video:
@@ -362,7 +361,7 @@ class Call(PyTgCalls):
             exis = (check[0]).get("old_dur")
             if exis:
                 db[chat_id][0]["dur"] = exis
-                db[chat_id][0]["seconds"] = check[0]["old_second"]
+                db[chat_id][0]["old_second"] = check[0]["old_second"]
                 db[chat_id][0]["speed_path"] = None
                 db[chat_id][0]["speed"] = 1.0
             video = True if str(streamtype) == "video" else False
